@@ -585,7 +585,9 @@ static inline int drv_tx_last_beacon(struct ieee80211_local *local)
 
 int drv_ampdu_action(struct ieee80211_local *local,
 		     struct ieee80211_sub_if_data *sdata,
-		     struct ieee80211_ampdu_params *params);
+		     enum ieee80211_ampdu_mlme_action action,
+		     struct ieee80211_sta *sta, u16 tid,
+		     u16 *ssn, u8 buf_size, bool amsdu);
 
 static inline int drv_get_survey(struct ieee80211_local *local, int idx,
 				struct survey_info *survey)
@@ -637,7 +639,6 @@ static inline void drv_channel_switch(struct ieee80211_local *local,
 	local->ops->channel_switch(&local->hw, &sdata->vif, ch_switch);
 	trace_drv_return_void(local);
 }
-
 
 static inline int drv_set_antenna(struct ieee80211_local *local,
 				  u32 tx_ant, u32 rx_ant)
@@ -1156,9 +1157,6 @@ static inline void drv_wake_tx_queue(struct ieee80211_local *local,
 				     struct txq_info *txq)
 {
 	struct ieee80211_sub_if_data *sdata = vif_to_sdata(txq->txq.vif);
-
-	if (local->in_reconfig)
-		return;
 
 	if (!check_sdata_in_driver(sdata))
 		return;

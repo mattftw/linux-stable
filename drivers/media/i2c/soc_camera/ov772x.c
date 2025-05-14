@@ -477,7 +477,6 @@ static const struct ov772x_color_format ov772x_cfmts[] = {
 	},
 };
 
-
 /*
  * window size list
  */
@@ -834,7 +833,7 @@ static int ov772x_set_params(struct ov772x_priv *priv,
 	 * set COM8
 	 */
 	if (priv->band_filter) {
-		ret = ov772x_mask_set(client, COM8, BNDF_ON_OFF, BNDF_ON_OFF);
+		ret = ov772x_mask_set(client, COM8, BNDF_ON_OFF, 1);
 		if (!ret)
 			ret = ov772x_mask_set(client, BDBASE,
 					      0xff, 256 - priv->band_filter);

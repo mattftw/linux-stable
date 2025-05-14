@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /* memcontrol.c - Memory Controller
  *
  * Copyright IBM Corporation, 2007
@@ -996,7 +999,7 @@ static void invalidate_reclaim_iterators(struct mem_cgroup *dead_memcg)
 	int nid, zid;
 	int i;
 
-	for (; memcg; memcg = parent_mem_cgroup(memcg)) {
+	while ((memcg = parent_mem_cgroup(memcg))) {
 		for_each_node(nid) {
 			for (zid = 0; zid < MAX_NR_ZONES; zid++) {
 				mz = &memcg->nodeinfo[nid]->zoneinfo[zid];
@@ -2064,6 +2067,10 @@ retry:
 	if (unlikely(current->flags & PF_MEMALLOC))
 		goto force;
 
+#ifdef MY_ABC_HERE
+	if (task_skip_memcg_account(current))
+		goto force;
+#endif
 	if (unlikely(task_in_memcg_oom(current)))
 		goto nomem;
 
@@ -5576,7 +5583,7 @@ static void uncharge_list(struct list_head *page_list)
 		next = page->lru.next;
 
 		VM_BUG_ON_PAGE(PageLRU(page), page);
-		VM_BUG_ON_PAGE(!PageHWPoison(page) && page_count(page), page);
+		VM_BUG_ON_PAGE(page_count(page), page);
 
 		if (!page->mem_cgroup)
 			continue;

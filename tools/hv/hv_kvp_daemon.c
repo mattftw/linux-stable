@@ -21,7 +21,6 @@
  *
  */
 
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/poll.h>
@@ -56,7 +55,6 @@
  *
  */
 
-
 enum key_index {
 	FullyQualifiedDomainName = 0,
 	IntegrationServicesVersion, /*This key is serviced in the kernel*/
@@ -69,7 +67,6 @@ enum key_index {
 	OSVersion,
 	ProcessorArchitecture
 };
-
 
 enum {
 	IPADDR = 0,
@@ -193,14 +190,11 @@ static void kvp_update_mem_state(int pool)
 	for (;;) {
 		readp = &record[records_read];
 		records_read += fread(readp, sizeof(struct kvp_record),
-				ENTRIES_PER_BLOCK * num_blocks - records_read,
-				filep);
+					ENTRIES_PER_BLOCK * num_blocks,
+					filep);
 
 		if (ferror(filep)) {
-			syslog(LOG_ERR,
-				"Failed to read file, pool: %d; error: %d %s",
-				 pool, errno, strerror(errno));
-			kvp_release_lock(pool);
+			syslog(LOG_ERR, "Failed to read file, pool: %d", pool);
 			exit(EXIT_FAILURE);
 		}
 
@@ -213,7 +207,6 @@ static void kvp_update_mem_state(int pool)
 
 			if (record == NULL) {
 				syslog(LOG_ERR, "malloc failed");
-				kvp_release_lock(pool);
 				exit(EXIT_FAILURE);
 			}
 			continue;
@@ -228,11 +221,15 @@ static void kvp_update_mem_state(int pool)
 	fclose(filep);
 	kvp_release_lock(pool);
 }
-
 static int kvp_file_init(void)
 {
 	int  fd;
+	FILE *filep;
+	size_t records_read;
 	char *fname;
+	struct kvp_record *record;
+	struct kvp_record *readp;
+	int num_blocks;
 	int i;
 	int alloc_unit = sizeof(struct kvp_record) * ENTRIES_PER_BLOCK;
 
@@ -246,19 +243,60 @@ static int kvp_file_init(void)
 
 	for (i = 0; i < KVP_POOL_COUNT; i++) {
 		fname = kvp_file_info[i].fname;
+		records_read = 0;
+		num_blocks = 1;
 		sprintf(fname, "%s/.kvp_pool_%d", KVP_CONFIG_LOC, i);
 		fd = open(fname, O_RDWR | O_CREAT | O_CLOEXEC, 0644 /* rw-r--r-- */);
 
 		if (fd == -1)
 			return 1;
 
-		kvp_file_info[i].fd = fd;
-		kvp_file_info[i].num_blocks = 1;
-		kvp_file_info[i].records = malloc(alloc_unit);
-		if (kvp_file_info[i].records == NULL)
+		filep = fopen(fname, "re");
+		if (!filep) {
+			close(fd);
 			return 1;
-		kvp_file_info[i].num_records = 0;
-		kvp_update_mem_state(i);
+		}
+
+		record = malloc(alloc_unit * num_blocks);
+		if (record == NULL) {
+			fclose(filep);
+			close(fd);
+			return 1;
+		}
+		for (;;) {
+			readp = &record[records_read];
+			records_read += fread(readp, sizeof(struct kvp_record),
+					ENTRIES_PER_BLOCK,
+					filep);
+
+			if (ferror(filep)) {
+				syslog(LOG_ERR, "Failed to read file, pool: %d",
+				       i);
+				exit(EXIT_FAILURE);
+			}
+
+			if (!feof(filep)) {
+				/*
+				 * We have more data to read.
+				 */
+				num_blocks++;
+				record = realloc(record, alloc_unit *
+						num_blocks);
+				if (record == NULL) {
+					fclose(filep);
+					close(fd);
+					return 1;
+				}
+				continue;
+			}
+			break;
+		}
+		kvp_file_info[i].fd = fd;
+		kvp_file_info[i].num_blocks = num_blocks;
+		kvp_file_info[i].records = record;
+		kvp_file_info[i].num_records = records_read;
+		fclose(filep);
+
 	}
 
 	return 0;
@@ -286,7 +324,7 @@ static int kvp_key_delete(int pool, const __u8 *key, int key_size)
 		 * Found a match; just move the remaining
 		 * entries up.
 		 */
-		if (i == (num_records - 1)) {
+		if (i == num_records) {
 			kvp_file_info[pool].num_records--;
 			kvp_update_file(pool);
 			return 0;
@@ -412,7 +450,6 @@ static int kvp_pool_enumerate(int pool, int index, __u8 *key, int key_size,
 	memcpy(value, record[index].value, value_size);
 	return 0;
 }
-
 
 void kvp_get_os_info(void)
 {
@@ -542,8 +579,6 @@ done:
 	return;
 }
 
-
-
 /*
  * Retrieve an interface name corresponding to the specified guid.
  * If there is a match, the function returns a pointer
@@ -639,7 +674,6 @@ static char *kvp_if_name_to_mac(char *if_name)
 	return mac_addr;
 }
 
-
 /*
  * Retrieve the interface name given tha MAC address.
  */
@@ -701,7 +735,6 @@ static char *kvp_mac_to_if_name(char *mac)
 	closedir(dir);
 	return if_name;
 }
-
 
 static void kvp_process_ipconfig_file(char *cmd,
 					char *config_buf, unsigned int len,
@@ -767,7 +800,6 @@ static void kvp_get_ipconfig_info(char *if_name,
 	kvp_process_ipconfig_file(cmd, (char *)buffer->gate_way,
 				(MAX_GATEWAY_SIZE * 2), INET6_ADDRSTRLEN, 1);
 
-
 	/*
 	 * Gather the DNS  state.
 	 * Since there is no standard way to get this information
@@ -819,7 +851,6 @@ static void kvp_get_ipconfig_info(char *if_name,
 
 	pclose(file);
 }
-
 
 static unsigned int hweight32(unsigned int *w)
 {
@@ -1008,7 +1039,6 @@ getaddr_done:
 	return error;
 }
 
-
 static int expand_ipv6(char *addr, int type)
 {
 	int ret;
@@ -1097,7 +1127,6 @@ static int kvp_write_file(FILE *f, char *s1, char *s2, char *s3)
 	return 0;
 }
 
-
 static int process_ip_string(FILE *f, char *ip_string, int type)
 {
 	int error = 0;
@@ -1137,7 +1166,6 @@ static int process_ip_string(FILE *f, char *ip_string, int type)
 			} else {
 				snprintf(sub_str, sizeof(sub_str), "%d", i++);
 			}
-
 
 		} else if (expand_ipv6(addr, type)) {
 			switch (type) {
@@ -1320,7 +1348,6 @@ setval_error:
 	return error;
 }
 
-
 static void
 kvp_get_domain_name(char *buffer, int length)
 {
@@ -1391,7 +1418,7 @@ int main(int argc, char *argv[])
 	openlog("KVP", 0, LOG_USER);
 	syslog(LOG_INFO, "KVP starting; pid is:%d", getpid());
 
-	kvp_fd = open("/dev/vmbus/hv_kvp", O_RDWR | O_CLOEXEC);
+	kvp_fd = open("/dev/vmbus/hv_kvp", O_RDWR);
 
 	if (kvp_fd < 0) {
 		syslog(LOG_ERR, "open /dev/vmbus/hv_kvp failed; error: %d %s",

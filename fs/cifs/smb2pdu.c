@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  *   fs/cifs/smb2pdu.c
  *
@@ -77,8 +80,11 @@ static const int smb2_req_struct_sizes[NUMBER_OF_SMB2_COMMANDS] = {
 	/* SMB2_OPLOCK_BREAK */ 24 /* BB this is 36 for LEASE_BREAK variant */
 };
 
-
+#ifdef MY_ABC_HERE
+void
+#else
 static void
+#endif /* MY_ABC_HERE */
 smb2_hdr_assemble(struct smb2_hdr *hdr, __le16 smb2_cmd /* command */ ,
 		  const struct cifs_tcon *tcon)
 {
@@ -158,10 +164,13 @@ out:
 static int
 smb2_reconnect(__le16 smb2_command, struct cifs_tcon *tcon)
 {
-	int rc;
+	int rc = 0;
 	struct nls_table *nls_codepage;
 	struct cifs_ses *ses;
 	struct TCP_Server_Info *server;
+#ifdef MY_ABC_HERE
+	u16 origin_dialect; /* dialect index that server chose */
+#endif /* MY_ABC_HERE */
 
 	/*
 	 * SMB2s NegProt, SessSetup, Logoff do not have tcon yet so
@@ -169,10 +178,10 @@ smb2_reconnect(__le16 smb2_command, struct cifs_tcon *tcon)
 	 * for those three - in the calling routine.
 	 */
 	if (tcon == NULL)
-		return 0;
+		return rc;
 
 	if (smb2_command == SMB2_TREE_CONNECT)
-		return 0;
+		return rc;
 
 	if (tcon->tidStatus == CifsExiting) {
 		/*
@@ -215,14 +224,8 @@ smb2_reconnect(__le16 smb2_command, struct cifs_tcon *tcon)
 			return -EAGAIN;
 		}
 
-		rc = wait_event_interruptible_timeout(server->response_q,
-						      (server->tcpStatus != CifsNeedReconnect),
-						      10 * HZ);
-		if (rc < 0) {
-			cifs_dbg(FYI, "%s: aborting reconnect due to a received"
-				 " signal by the process\n", __func__);
-			return -ERESTARTSYS;
-		}
+		wait_event_interruptible_timeout(server->response_q,
+			(server->tcpStatus != CifsNeedReconnect), 10 * HZ);
 
 		/* are we still trying to reconnect? */
 		if (server->tcpStatus != CifsNeedReconnect)
@@ -239,16 +242,34 @@ smb2_reconnect(__le16 smb2_command, struct cifs_tcon *tcon)
 		}
 	}
 
+#ifdef MY_ABC_HERE
+	if (SMB20_PROT_ID > server->dialect) {
+		cifs_dbg(FYI, "(%s) origin_dialect=0x%x, server->dialect=0x%x\n", __func__, origin_dialect, server->dialect);
+		return -EAGAIN;
+	}
+	origin_dialect = server->dialect;
+#endif /* MY_ABC_HERE */
 	if (!tcon->ses->need_reconnect && !tcon->need_reconnect)
-		return 0;
+		return rc;
 
+#ifdef MY_ABC_HERE
+	nls_codepage = load_nls("utf8");
+#else
 	nls_codepage = load_nls_default();
+#endif /* MY_ABC_HERE */
 
 	/*
 	 * need to prevent multiple threads trying to simultaneously reconnect
 	 * the same SMB session
 	 */
+#ifdef MY_ABC_HERE
+	if (!mutex_trylock(&tcon->ses->session_mutex)) {
+		rc = -EINPROGRESS;
+		goto out;
+	}
+#else
 	mutex_lock(&tcon->ses->session_mutex);
+#endif /* MY_ABC_HERE */
 	rc = cifs_negotiate_protocol(0, tcon->ses);
 	if (!rc && tcon->ses->need_reconnect)
 		rc = cifs_setup_session(0, tcon->ses, nls_codepage);
@@ -259,12 +280,23 @@ smb2_reconnect(__le16 smb2_command, struct cifs_tcon *tcon)
 	}
 
 	cifs_mark_open_files_invalid(tcon);
+#ifdef MY_ABC_HERE
+	rc = ses->server->ops->tree_connect(0, tcon->ses, tcon->treeName, tcon, nls_codepage);
+#else
 	rc = SMB2_tcon(0, tcon->ses, tcon->treeName, tcon, nls_codepage);
+#endif /* MY_ABC_HERE */
 	mutex_unlock(&tcon->ses->session_mutex);
 	cifs_dbg(FYI, "reconnect tcon rc = %d\n", rc);
 	if (rc)
 		goto out;
 	atomic_inc(&tconInfoReconnectCount);
+#ifdef MY_ABC_HERE
+	if (server->dialect != origin_dialect ||
+	    SMB20_PROT_ID > server->dialect) {
+		cifs_dbg(FYI, "(%s) SMB2 reconnect dialect not match! origin=0x%x, current=0x%x\n", __func__, origin_dialect, server->dialect);
+		rc = -EAGAIN;
+	}
+#endif /* MY_ABC_HERE */
 out:
 	/*
 	 * Check if handle based operation so we know whether we can continue
@@ -315,7 +347,7 @@ small_smb2_init(__le16 smb2_command, struct cifs_tcon *tcon,
 	smb2_hdr_assemble((struct smb2_hdr *) *request_buf, smb2_command, tcon);
 
 	if (tcon != NULL) {
-#ifdef CONFIG_CIFS_STATS
+#ifdef CONFIG_CIFS_STATS2
 		uint16_t com_code = le16_to_cpu(smb2_command);
 		cifs_stats_inc(&tcon->stats.smb2_stats.smb2_com_sent[com_code]);
 #endif
@@ -328,7 +360,6 @@ small_smb2_init(__le16 smb2_command, struct cifs_tcon *tcon,
 #ifdef CONFIG_CIFS_SMB311
 /* offset is sizeof smb2_negotiate_req - 4 but rounded up to 8 bytes */
 #define OFFSET_OF_NEG_CONTEXT 0x68  /* sizeof(struct smb2_negotiate_req) - 4 */
-
 
 #define SMB2_PREAUTH_INTEGRITY_CAPABILITIES	cpu_to_le16(1)
 #define SMB2_ENCRYPTION_CAPABILITIES		cpu_to_le16(2)
@@ -367,7 +398,7 @@ assemble_neg_contexts(struct smb2_negotiate_req *req)
 	build_encrypt_ctxt((struct smb2_encryption_neg_context *)pneg_ctxt);
 	req->NegotiateContextOffset = cpu_to_le32(OFFSET_OF_NEG_CONTEXT);
 	req->NegotiateContextCount = cpu_to_le16(2);
-	inc_rfc1001_len(req, 4 + sizeof(struct smb2_preauth_neg_context)
+	inc_rfc1001_len(req, 4 + sizeof(struct smb2_preauth_neg_context) + 2
 			+ sizeof(struct smb2_encryption_neg_context)); /* calculate hash */
 }
 #else
@@ -376,7 +407,6 @@ static void assemble_neg_contexts(struct smb2_negotiate_req *req)
 	return;
 }
 #endif /* SMB311 */
-
 
 /*
  *
@@ -532,21 +562,14 @@ int smb3_validate_negotiate(const unsigned int xid, struct cifs_tcon *tcon)
 
 	/*
 	 * validation ioctl must be signed, so no point sending this if we
-	 * can not sign it (ie are not known user).  Even if signing is not
-	 * required (enabled but not negotiated), in those cases we selectively
+	 * can not sign it.  We could eventually change this to selectively
 	 * sign just this, the first and only signed request on a connection.
-	 * Having validation of negotiate info  helps reduce attack vectors.
+	 * This is good enough for now since a user who wants better security
+	 * would also enable signing on the mount. Having validation of
+	 * negotiate info for signed connections helps reduce attack vectors
 	 */
-	if (tcon->ses->session_flags & SMB2_SESSION_FLAG_IS_GUEST)
+	if (tcon->ses->server->sign == false)
 		return 0; /* validation requires signing */
-
-	if (tcon->ses->user_name == NULL) {
-		cifs_dbg(FYI, "Can't validate negotiate: null user mount\n");
-		return 0; /* validation requires signing */
-	}
-
-	if (tcon->ses->session_flags & SMB2_SESSION_FLAG_IS_NULL)
-		cifs_dbg(VFS, "Unexpected null user (anonymous) auth flag sent by server\n");
 
 	vneg_inbuf.Capabilities =
 			cpu_to_le32(tcon->ses->server->vals->req_capabilities);
@@ -577,16 +600,13 @@ int smb3_validate_negotiate(const unsigned int xid, struct cifs_tcon *tcon)
 	}
 
 	if (rsplen != sizeof(struct validate_negotiate_info_rsp)) {
-		cifs_dbg(VFS, "invalid protocol negotiate response size: %d\n",
-			 rsplen);
-
-		/* relax check since Mac returns max bufsize allowed on ioctl */
-		if (rsplen > CIFSMaxBufSize)
-			return -EIO;
+		cifs_dbg(VFS, "invalid size of protocol negotiate response\n");
+		return -EIO;
 	}
 
 	/* check validate negotiate info response matches what we got earlier */
-	if (pneg_rsp->Dialect != cpu_to_le16(tcon->ses->server->dialect))
+	if (pneg_rsp->Dialect !=
+			cpu_to_le16(tcon->ses->server->vals->protocol_id))
 		goto vneg_out;
 
 	if (pneg_rsp->SecurityMode != cpu_to_le16(tcon->ses->server->sec_mode))
@@ -838,14 +858,24 @@ ssetup_exit:
 
 	if (!rc) {
 		mutex_lock(&server->srv_mutex);
-		if (server->ops->generate_signingkey) {
+		if (server->sign && server->ops->generate_signingkey) {
 			rc = server->ops->generate_signingkey(ses);
+#ifdef MY_ABC_HERE
+			if (-EOPNOTSUPP == rc) {
+				rc = 0;
+			} else {
+#endif /* MY_ABC_HERE */
+			kfree(ses->auth_key.response);
+			ses->auth_key.response = NULL;
 			if (rc) {
 				cifs_dbg(FYI,
 					"SMB3 session key generation failed\n");
 				mutex_unlock(&server->srv_mutex);
 				goto keygen_exit;
 			}
+#ifdef MY_ABC_HERE
+			}
+#endif /* MY_ABC_HERE */
 		}
 		if (!server->session_estab) {
 			server->sequence_number = 0x2;
@@ -861,6 +891,10 @@ ssetup_exit:
 	}
 
 keygen_exit:
+	if (!server->sign) {
+		kfree(ses->auth_key.response);
+		ses->auth_key.response = NULL;
+	}
 	if (spnego_key) {
 		key_invalidate(spnego_key);
 		key_put(spnego_key);
@@ -942,6 +976,9 @@ SMB2_tcon(const unsigned int xid, struct cifs_ses *ses, const char *tree,
 	else
 		return -EIO;
 
+	if (tcon && tcon->bad_network_name)
+		return -ENOENT;
+
 	if ((tcon && tcon->seal) &&
 	    ((ses->server->capabilities & SMB2_GLOBAL_CAP_ENCRYPTION) == 0)) {
 		cifs_dbg(VFS, "encryption requested but no server support");
@@ -958,10 +995,6 @@ SMB2_tcon(const unsigned int xid, struct cifs_ses *ses, const char *tree,
 		kfree(unc_path);
 		return -EINVAL;
 	}
-
-	/* SMB2 TREE_CONNECT request must be called with TreeId == 0 */
-	if (tcon)
-		tcon->tid = 0;
 
 	rc = small_smb2_init(SMB2_TREE_CONNECT, tcon, (void **) &req);
 	if (rc) {
@@ -1005,19 +1038,15 @@ SMB2_tcon(const unsigned int xid, struct cifs_ses *ses, const char *tree,
 		goto tcon_exit;
 	}
 
-	switch (rsp->ShareType) {
-	case SMB2_SHARE_TYPE_DISK:
+	if (rsp->ShareType & SMB2_SHARE_TYPE_DISK)
 		cifs_dbg(FYI, "connection to disk share\n");
-		break;
-	case SMB2_SHARE_TYPE_PIPE:
+	else if (rsp->ShareType & SMB2_SHARE_TYPE_PIPE) {
 		tcon->ipc = true;
 		cifs_dbg(FYI, "connection to pipe share\n");
-		break;
-	case SMB2_SHARE_TYPE_PRINT:
-		tcon->ipc = true;
+	} else if (rsp->ShareType & SMB2_SHARE_TYPE_PRINT) {
+		tcon->print = true;
 		cifs_dbg(FYI, "connection to printer\n");
-		break;
-	default:
+	} else {
 		cifs_dbg(VFS, "unknown share type %d\n", rsp->ShareType);
 		rc = -EOPNOTSUPP;
 		goto tcon_error_exit;
@@ -1047,6 +1076,8 @@ tcon_exit:
 tcon_error_exit:
 	if (rsp->hdr.Status == STATUS_BAD_NETWORK_NAME) {
 		cifs_dbg(VFS, "BAD_NETWORK_NAME: %s\n", tree);
+		if (tcon)
+			tcon->bad_network_name = true;
 	}
 	goto tcon_exit;
 }
@@ -1079,7 +1110,6 @@ SMB2_tdis(const unsigned int xid, struct cifs_tcon *tcon)
 
 	return rc;
 }
-
 
 static struct create_durable *
 create_durable_buf(void)
@@ -1146,7 +1176,13 @@ parse_lease_state(struct TCP_Server_Info *server, struct smb2_create_rsp *rsp,
 		name = le16_to_cpu(cc->NameOffset) + (char *)cc;
 		if (le16_to_cpu(cc->NameLength) == 4 &&
 		    strncmp(name, "RqLs", 4) == 0)
+#ifdef MY_ABC_HERE
+		{
+			return server->ops->parse_lease_buf(server, cc, epoch);
+		}
+#else
 			return server->ops->parse_lease_buf(cc, epoch);
+#endif /* MY_ABC_HERE */
 
 		next = le32_to_cpu(cc->Next);
 		if (!next)
@@ -1165,7 +1201,11 @@ add_lease_context(struct TCP_Server_Info *server, struct kvec *iov,
 	struct smb2_create_req *req = iov[0].iov_base;
 	unsigned int num = *num_iovec;
 
+#ifdef MY_ABC_HERE
+	iov[num].iov_base = server->ops->create_lease_buf(server, oplock+1, *oplock);
+#else
 	iov[num].iov_base = server->ops->create_lease_buf(oplock+1, *oplock);
+#endif /* MY_ABC_HERE */
 	if (iov[num].iov_base == NULL)
 		return -ENOMEM;
 	iov[num].iov_len = server->vals->create_lease_size;
@@ -1532,12 +1572,8 @@ SMB2_ioctl(const unsigned int xid, struct cifs_tcon *tcon, u64 persistent_fid,
 	 * than one credit. Windows typically sets this smaller, but for some
 	 * ioctls it may be useful to allow server to send more. No point
 	 * limiting what the server can send as long as fits in one credit
-	 * Unfortunately - we can not handle more than CIFS_MAX_MSG_SIZE
-	 * (by default, note that it can be overridden to make max larger)
-	 * in responses (except for read responses which can be bigger.
-	 * We may want to bump this limit up
 	 */
-	req->MaxOutputResponse = cpu_to_le32(CIFSMaxBufSize);
+	req->MaxOutputResponse = cpu_to_le32(0xFF00); /* < 64K uses 1 credit */
 
 	if (is_fsctl)
 		req->Flags = cpu_to_le32(SMB2_0_IOCTL_IS_FSCTL);
@@ -1561,10 +1597,6 @@ SMB2_ioctl(const unsigned int xid, struct cifs_tcon *tcon, u64 persistent_fid,
 		inc_rfc1001_len(req, indatalen - 1);
 	} else
 		iov[0].iov_len = get_rfc1002_length(req) + 4;
-
-	/* validate negotiate request must be signed - see MS-SMB2 3.2.5.5 */
-	if (opcode == FSCTL_VALIDATE_NEGOTIATE_INFO)
-		req->hdr.Flags |= SMB2_FLAGS_SIGNED;
 
 	rc = SendReceive2(xid, ses, iov, num_iovecs, &resp_buftype, 0);
 	rsp = (struct smb2_ioctl_rsp *)iov[0].iov_base;
@@ -1696,7 +1728,6 @@ validate_buf(unsigned int offset, unsigned int buffer_length,
 	char *end_of_smb = smb_len + 4 /* RFC1001 length field */ + (char *)hdr;
 	char *begin_of_buf = 4 /* RFC1001 len field */ + offset + (char *)hdr;
 	char *end_of_buf = begin_of_buf + buffer_length;
-
 
 	if (buffer_length < min_buf_size) {
 		cifs_dbg(VFS, "buffer length %d smaller than minimum size %d\n",
@@ -1901,6 +1932,13 @@ SMB2_echo(struct TCP_Server_Info *server)
 
 	cifs_dbg(FYI, "In echo request\n");
 
+#ifdef MY_ABC_HERE
+	if (server && CifsGood != server->tcpStatus) {
+		cifs_dbg(FYI, "tcpStatus not Good (%d); Don't send echo\n",
+				server->tcpStatus);
+		return rc;
+	}
+#endif /* MY_ABC_HERE */
 	if (server->tcpStatus == CifsNeedNegotiate) {
 		/* No need to send echo on newly established connections */
 		queue_delayed_work(cifsiod_wq, &server->reconnect, 0);
@@ -1932,7 +1970,12 @@ SMB2_flush(const unsigned int xid, struct cifs_tcon *tcon, u64 persistent_fid,
 {
 	struct smb2_flush_req *req;
 	struct TCP_Server_Info *server;
+#ifdef MY_ABC_HERE
+	// CID 413508: Dereference before NULL check
+	struct cifs_ses *ses = tcon ? tcon->ses : NULL;
+#else
 	struct cifs_ses *ses = tcon->ses;
+#endif /* MY_ABC_HERE */
 	struct kvec iov[1];
 	int resp_buftype;
 	int rc = 0;
@@ -2402,38 +2445,33 @@ num_entries(char *bufstart, char *end_of_buf, char **lastentry, size_t size)
 	int len;
 	unsigned int entrycount = 0;
 	unsigned int next_offset = 0;
-	char *entryptr;
-	FILE_DIRECTORY_INFO *dir_info;
+	FILE_DIRECTORY_INFO *entryptr;
 
 	if (bufstart == NULL)
 		return 0;
 
-	entryptr = bufstart;
+	entryptr = (FILE_DIRECTORY_INFO *)bufstart;
 
 	while (1) {
-		if (entryptr + next_offset < entryptr ||
-		    entryptr + next_offset > end_of_buf ||
-		    entryptr + next_offset + size > end_of_buf) {
+		entryptr = (FILE_DIRECTORY_INFO *)
+					((char *)entryptr + next_offset);
+
+		if ((char *)entryptr + size > end_of_buf) {
 			cifs_dbg(VFS, "malformed search entry would overflow\n");
 			break;
 		}
 
-		entryptr = entryptr + next_offset;
-		dir_info = (FILE_DIRECTORY_INFO *)entryptr;
-
-		len = le32_to_cpu(dir_info->FileNameLength);
-		if (entryptr + len < entryptr ||
-		    entryptr + len > end_of_buf ||
-		    entryptr + len + size > end_of_buf) {
+		len = le32_to_cpu(entryptr->FileNameLength);
+		if ((char *)entryptr + len + size > end_of_buf) {
 			cifs_dbg(VFS, "directory entry name would overflow frame end of buf %p\n",
 				 end_of_buf);
 			break;
 		}
 
-		*lastentry = entryptr;
+		*lastentry = (char *)entryptr;
 		entrycount++;
 
-		next_offset = le32_to_cpu(dir_info->NextEntryOffset);
+		next_offset = le32_to_cpu(entryptr->NextEntryOffset);
 		if (!next_offset)
 			break;
 	}
@@ -2523,8 +2561,8 @@ SMB2_query_directory(const unsigned int xid, struct cifs_tcon *tcon,
 		if (rc == -ENODATA && rsp->hdr.Status == STATUS_NO_MORE_FILES) {
 			srch_inf->endOfSearch = true;
 			rc = 0;
-		} else
-			cifs_stats_fail_inc(tcon, SMB2_QUERY_DIRECTORY_HE);
+		}
+		cifs_stats_fail_inc(tcon, SMB2_QUERY_DIRECTORY_HE);
 		goto qdir_exit;
 	}
 
@@ -2786,8 +2824,8 @@ copy_fs_info_to_kstatfs(struct smb2_fs_full_size_info *pfs_inf,
 	kst->f_bsize = le32_to_cpu(pfs_inf->BytesPerSector) *
 			  le32_to_cpu(pfs_inf->SectorsPerAllocationUnit);
 	kst->f_blocks = le64_to_cpu(pfs_inf->TotalAllocationUnits);
-	kst->f_bfree  = kst->f_bavail =
-			le64_to_cpu(pfs_inf->CallerAvailableAllocationUnits);
+	kst->f_bfree  = le64_to_cpu(pfs_inf->ActualAvailableAllocationUnits);
+	kst->f_bavail = le64_to_cpu(pfs_inf->CallerAvailableAllocationUnits);
 	return;
 }
 

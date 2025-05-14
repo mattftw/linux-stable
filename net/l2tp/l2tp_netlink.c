@@ -30,7 +30,6 @@
 
 #include "l2tp_core.h"
 
-
 static struct genl_family l2tp_nl_family = {
 	.id		= GENL_ID_GENERATE,
 	.name		= L2TP_GENL_NAME,
@@ -285,7 +284,7 @@ static int l2tp_nl_cmd_tunnel_delete(struct sk_buff *skb, struct genl_info *info
 	l2tp_tunnel_notify(&l2tp_nl_family, info,
 			   tunnel, L2TP_CMD_TUNNEL_DELETE);
 
-	l2tp_tunnel_delete(tunnel);
+	(void) l2tp_tunnel_delete(tunnel);
 
 out:
 	return ret;
@@ -827,7 +826,7 @@ static int l2tp_nl_cmd_session_dump(struct sk_buff *skb, struct netlink_callback
 				goto out;
 		}
 
-		session = l2tp_session_get_nth(tunnel, si, false);
+		session = l2tp_session_find_nth(tunnel, si);
 		if (session == NULL) {
 			ti++;
 			tunnel = NULL;
@@ -837,11 +836,8 @@ static int l2tp_nl_cmd_session_dump(struct sk_buff *skb, struct netlink_callback
 
 		if (l2tp_nl_session_send(skb, NETLINK_CB(cb->skb).portid,
 					 cb->nlh->nlmsg_seq, NLM_F_MULTI,
-					 session, L2TP_CMD_SESSION_GET) < 0) {
-			l2tp_session_dec_refcount(session);
+					 session, L2TP_CMD_SESSION_GET) < 0)
 			break;
-		}
-		l2tp_session_dec_refcount(session);
 
 		si++;
 	}

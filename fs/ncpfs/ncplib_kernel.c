@@ -167,7 +167,6 @@ ncp_negotiate_buffersize(struct ncp_server *server, int size, int *target)
 	return 0;
 }
 
-
 /* options: 
  *	bit 0	ipx checksum
  *	bit 1	packet signing
@@ -703,7 +702,6 @@ int ncp_modify_nfs_info(struct ncp_server *server, __u8 volnum, __le32 dirent,
 }
 #endif
 
-
 static int
 ncp_DeleteNSEntry(struct ncp_server *server,
 		  __u8 have_dir_base, __u8 volnum, __le32 dirent,
@@ -961,7 +959,6 @@ int ncp_ren_or_mov_file_or_subdir(struct ncp_server *server,
 	return result;
 }
 	
-
 /* We have to transfer to/from user space */
 int
 ncp_read_kernel(struct ncp_server *server, const char *file_id,
@@ -980,10 +977,6 @@ ncp_read_kernel(struct ncp_server *server, const char *file_id,
 		goto out;
 	}
 	*bytes_read = ncp_reply_be16(server, 0);
-	if (*bytes_read > to_read) {
-		result = -EINVAL;
-		goto out;
-	}
 	source = ncp_reply_data(server, 2 + (offset & 1));
 
 	memcpy(target, source, *bytes_read);

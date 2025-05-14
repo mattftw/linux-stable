@@ -84,7 +84,6 @@ struct inode *ceph_get_dentry_parent_inode(struct dentry *dentry)
 	return inode;
 }
 
-
 /*
  * for readdir, we encode the directory frag and offset within that
  * frag into f_pos.
@@ -247,11 +246,6 @@ static int __dcache_readdir(struct file *file,  struct dir_context *ctx,
 		if (ret < 0)
 			err = ret;
 		dput(last);
-		/* last_name no longer match cache index */
-		if (fi->readdir_cache_idx >= 0) {
-			fi->readdir_cache_idx = -1;
-			fi->dir_release_count = 0;
-		}
 	}
 	return err;
 }
@@ -365,7 +359,6 @@ more:
 		     " on frag %x, end=%d, complete=%d\n", err, frag,
 		     (int)req->r_reply_info.dir_end,
 		     (int)req->r_reply_info.dir_complete);
-
 
 		/* note next offset and last dentry name */
 		rinfo = &req->r_reply_info;
@@ -512,7 +505,7 @@ static loff_t ceph_dir_llseek(struct file *file, loff_t offset, int whence)
 	loff_t old_offset = ceph_make_fpos(fi->frag, fi->next_offset);
 	loff_t retval;
 
-	mutex_lock(&inode->i_mutex);
+	inode_lock(inode);
 	retval = -EINVAL;
 	switch (whence) {
 	case SEEK_CUR:
@@ -547,7 +540,7 @@ static loff_t ceph_dir_llseek(struct file *file, loff_t offset, int whence)
 		}
 	}
 out:
-	mutex_unlock(&inode->i_mutex);
+	inode_unlock(inode);
 	return retval;
 }
 
@@ -1288,7 +1281,6 @@ void ceph_dentry_lru_del(struct dentry *dn)
 unsigned ceph_dentry_hash(struct inode *dir, struct dentry *dn)
 {
 	struct ceph_inode_info *dci = ceph_inode(dir);
-	unsigned hash;
 
 	switch (dci->i_dir_layout.dl_dir_hash) {
 	case 0:	/* for backward compat */
@@ -1296,11 +1288,8 @@ unsigned ceph_dentry_hash(struct inode *dir, struct dentry *dn)
 		return dn->d_name.hash;
 
 	default:
-		spin_lock(&dn->d_lock);
-		hash = ceph_str_hash(dci->i_dir_layout.dl_dir_hash,
+		return ceph_str_hash(dci->i_dir_layout.dl_dir_hash,
 				     dn->d_name.name, dn->d_name.len);
-		spin_unlock(&dn->d_lock);
-		return hash;
 	}
 }
 

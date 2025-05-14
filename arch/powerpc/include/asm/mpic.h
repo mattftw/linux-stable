@@ -215,7 +215,6 @@ enum {
 	MPIC_IDX_END
 };
 
-
 #ifdef CONFIG_MPIC_U3_HT_IRQS
 /* Fixup table entry */
 struct mpic_irq_fixup
@@ -226,7 +225,6 @@ struct mpic_irq_fixup
 	unsigned int	index;
 };
 #endif /* CONFIG_MPIC_U3_HT_IRQS */
-
 
 enum mpic_reg_type {
 	mpic_access_mmio_le,
@@ -392,14 +390,7 @@ extern struct bus_type mpic_subsys;
 #define	MPIC_REGSET_TSI108		MPIC_REGSET(1)	/* Tsi108/109 PIC */
 
 /* Get the version of primary MPIC */
-#ifdef CONFIG_MPIC
 extern u32 fsl_mpic_primary_get_version(void);
-#else
-static inline u32 fsl_mpic_primary_get_version(void)
-{
-	return 0;
-}
-#endif
 
 /* Allocate the controller structure and setup the linux irq descs
  * for the range if interrupts passed in. No HW initialization is
@@ -439,7 +430,6 @@ extern struct mpic *mpic_alloc(struct device_node *node,
 extern void mpic_assign_isu(struct mpic *mpic, unsigned int isu_num,
 			    phys_addr_t phys_addr);
 
-
 /* Initialize the controller. After this has been called, none of the above
  * should be called again for this mpic
  */
@@ -450,7 +440,6 @@ extern void mpic_init(struct mpic *mpic);
  * ISUs have been assigned and the controller fully initialized
  * with mpic_init()
  */
-
 
 /* Change the priority of an interrupt. Default is 8 for irqs and
  * 10 for IPIs. You can call this on both IPIs and IRQ numbers, but the

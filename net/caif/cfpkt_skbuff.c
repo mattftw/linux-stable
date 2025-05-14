@@ -81,7 +81,11 @@ static struct cfpkt *cfpkt_create_pfx(u16 len, u16 pfx)
 {
 	struct sk_buff *skb;
 
-	skb = alloc_skb(len + pfx, GFP_ATOMIC);
+	if (likely(in_interrupt()))
+		skb = alloc_skb(len + pfx, GFP_ATOMIC);
+	else
+		skb = alloc_skb(len + pfx, GFP_KERNEL);
+
 	if (unlikely(skb == NULL))
 		return NULL;
 
@@ -177,7 +181,6 @@ int cfpkt_add_body(struct cfpkt *pkt, const void *data, u16 len)
 	u8 *to;
 	u16 addlen = 0;
 
-
 	if (unlikely(is_erronous(pkt)))
 		return -EPROTO;
 
@@ -272,7 +275,6 @@ int cfpkt_setlen(struct cfpkt *pkt, u16 len)
 {
 	struct sk_buff *skb = pkt_to_skb(pkt);
 
-
 	if (unlikely(is_erronous(pkt)))
 		return -EPROTO;
 
@@ -355,7 +357,6 @@ struct cfpkt *cfpkt_split(struct cfpkt *pkt, u16 pos)
 	if (tmppkt == NULL)
 		return NULL;
 	skb2 = pkt_to_skb(tmppkt);
-
 
 	if (skb2 == NULL)
 		return NULL;

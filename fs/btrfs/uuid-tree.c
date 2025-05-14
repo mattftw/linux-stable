@@ -22,7 +22,6 @@
 #include "disk-io.h"
 #include "print-tree.h"
 
-
 static void btrfs_uuid_to_key(u8 *uuid, u8 type, struct btrfs_key *key)
 {
 	key->type = type;
@@ -348,5 +347,7 @@ skip:
 
 out:
 	btrfs_free_path(path);
-	return ret;
+	if (ret)
+		btrfs_warn(fs_info, "btrfs_uuid_tree_iterate failed %d", ret);
+	return 0;
 }

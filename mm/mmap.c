@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * mm/mmap.c
  *
@@ -42,6 +45,9 @@
 #include <linux/memory.h>
 #include <linux/printk.h>
 #include <linux/userfaultfd_k.h>
+#ifdef MY_ABC_HERE
+#include <linux/fsnotify.h>
+#endif /* MY_ABC_HERE */
 
 #include <asm/uaccess.h>
 #include <asm/cacheflush.h>
@@ -107,7 +113,6 @@ void vma_set_page_prot(struct vm_area_struct *vma)
 						     vm_flags);
 	}
 }
-
 
 int sysctl_overcommit_memory __read_mostly = OVERCOMMIT_GUESS;  /* heuristic overcommit */
 int sysctl_overcommit_ratio __read_mostly = 50;	/* default is 50% */
@@ -275,7 +280,11 @@ static struct vm_area_struct *remove_vma(struct vm_area_struct *vma)
 	if (vma->vm_ops && vma->vm_ops->close)
 		vma->vm_ops->close(vma);
 	if (vma->vm_file)
+#ifdef CONFIG_AUFS_FHSM
+		vma_fput(vma);
+#else
 		fput(vma->vm_file);
+#endif /* CONFIG_AUFS_FHSM */
 	mpol_put(vma_policy(vma));
 	kmem_cache_free(vm_area_cachep, vma);
 	return next;
@@ -905,7 +914,11 @@ again:			remove_next = 1 + (end > next->vm_end);
 	if (remove_next) {
 		if (file) {
 			uprobe_munmap(next, next->vm_start, next->vm_end);
+#ifdef CONFIG_AUFS_FHSM
+			vma_fput(vma);
+#else
 			fput(file);
+#endif /* CONFIG_AUFS_FHSM */
 		}
 		if (next->anon_vma)
 			anon_vma_merge(vma, next);
@@ -1275,35 +1288,6 @@ static inline int mlock_future_check(struct mm_struct *mm,
 	return 0;
 }
 
-static inline u64 file_mmap_size_max(struct file *file, struct inode *inode)
-{
-	if (S_ISREG(inode->i_mode))
-		return MAX_LFS_FILESIZE;
-
-	if (S_ISBLK(inode->i_mode))
-		return MAX_LFS_FILESIZE;
-
-	/* Special "we do even unsigned file positions" case */
-	if (file->f_mode & FMODE_UNSIGNED_OFFSET)
-		return 0;
-
-	/* Yes, random drivers might want more. But I'm tired of buggy drivers */
-	return ULONG_MAX;
-}
-
-static inline bool file_mmap_ok(struct file *file, struct inode *inode,
-				unsigned long pgoff, unsigned long len)
-{
-	u64 maxsize = file_mmap_size_max(file, inode);
-
-	if (maxsize && len > maxsize)
-		return false;
-	maxsize -= len;
-	if (pgoff > maxsize >> PAGE_SHIFT)
-		return false;
-	return true;
-}
-
 /*
  * The caller must hold down_write(&current->mm->mmap_sem).
  */
@@ -1368,9 +1352,6 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
 
 	if (file) {
 		struct inode *inode = file_inode(file);
-
-		if (!file_mmap_ok(file, inode, pgoff, len))
-			return -EOVERFLOW;
 
 		switch (flags & MAP_TYPE) {
 		case MAP_SHARED:
@@ -1731,8 +1712,13 @@ out:
 	return addr;
 
 unmap_and_free_vma:
+#ifdef CONFIG_AUFS_FHSM
+	vma_fput(vma);
+#endif
 	vma->vm_file = NULL;
+#ifndef CONFIG_AUFS_FHSM
 	fput(file);
+#endif
 
 	/* Undo any partial mapping done by a device driver. */
 	unmap_region(mm, vma, prev, vma->vm_start, vma->vm_end);
@@ -2208,7 +2194,7 @@ int expand_upwards(struct vm_area_struct *vma, unsigned long address)
 
 	/* Guard against exceeding limits of the address space. */
 	address &= PAGE_MASK;
-	if (address >= (TASK_SIZE & PAGE_MASK))
+	if (address >= TASK_SIZE)
 		return -ENOMEM;
 	address += PAGE_SIZE;
 
@@ -2220,8 +2206,7 @@ int expand_upwards(struct vm_area_struct *vma, unsigned long address)
 		gap_addr = TASK_SIZE;
 
 	next = vma->vm_next;
-	if (next && next->vm_start < gap_addr &&
-			(next->vm_flags & (VM_WRITE|VM_READ|VM_EXEC))) {
+	if (next && next->vm_start < gap_addr) {
 		if (!(next->vm_flags & VM_GROWSUP))
 			return -ENOMEM;
 		/* Check that both stack segments have the same anon_vma? */
@@ -2294,19 +2279,19 @@ int expand_downwards(struct vm_area_struct *vma,
 	struct mm_struct *mm = vma->vm_mm;
 	struct vm_area_struct *prev;
 	unsigned long gap_addr;
-	int error = 0;
+	int error;
 
 	address &= PAGE_MASK;
-	if (address < mmap_min_addr)
-		return -EPERM;
+	error = security_mmap_addr(address);
+	if (error)
+		return error;
 
 	/* Enforce stack_guard_gap */
 	gap_addr = address - stack_guard_gap;
 	if (gap_addr > address)
 		return -ENOMEM;
 	prev = vma->vm_prev;
-	if (prev && prev->vm_end > gap_addr &&
-			(prev->vm_flags & (VM_WRITE|VM_READ|VM_EXEC))) {
+	if (prev && prev->vm_end > gap_addr) {
 		if (!(prev->vm_flags & VM_GROWSDOWN))
 			return -ENOMEM;
 		/* Check that both stack segments have the same anon_vma? */
@@ -2550,7 +2535,11 @@ static int __split_vma(struct mm_struct *mm, struct vm_area_struct *vma,
 		goto out_free_mpol;
 
 	if (new->vm_file)
+#ifdef CONFIG_AUFS_FHSM
+		vma_get_file(new);
+#else
 		get_file(new->vm_file);
+#endif /* CONFIG_AUFS_FHSM */
 
 	if (new->vm_ops && new->vm_ops->open)
 		new->vm_ops->open(new);
@@ -2569,7 +2558,11 @@ static int __split_vma(struct mm_struct *mm, struct vm_area_struct *vma,
 	if (new->vm_ops && new->vm_ops->close)
 		new->vm_ops->close(new);
 	if (new->vm_file)
+#ifdef CONFIG_AUFS_FHSM
+		vma_fput(new);
+#else
 		fput(new->vm_file);
+#endif /* CONFIG_AUFS_FHSM */
 	unlink_anon_vmas(new);
  out_free_mpol:
 	mpol_put(vma_policy(new));
@@ -2667,6 +2660,10 @@ int do_munmap(struct mm_struct *mm, unsigned long start, size_t len)
 		}
 	}
 
+#ifdef MY_ABC_HERE
+	if (vma->vm_file && (vma->vm_flags & VM_WRITE))
+		fsnotify_modify(vma->vm_file);
+#endif /* MY_ABC_HERE */
 	/*
 	 * Remove the vma's, and unmap the actual pages
 	 */
@@ -2699,7 +2696,6 @@ SYSCALL_DEFINE2(munmap, unsigned long, addr, size_t, len)
 	return vm_munmap(addr, len);
 }
 
-
 /*
  * Emulation of deprecated remap_file_pages() syscall.
  */
@@ -2711,7 +2707,9 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
 	struct vm_area_struct *vma;
 	unsigned long populate = 0;
 	unsigned long ret = -EINVAL;
+#ifndef	CONFIG_AUFS_FHSM
 	struct file *file;
+#endif /* CONFIG_AUFS_FHSM */
 
 	pr_warn_once("%s (%d) uses deprecated remap_file_pages() syscall. "
 			"See Documentation/vm/remap_file_pages.txt.\n",
@@ -2779,10 +2777,18 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
 		}
 	}
 
+#ifdef CONFIG_AUFS_FHSM
+	vma_get_file(vma);
+#else
 	file = get_file(vma->vm_file);
+#endif /* CONFIG_AUFS_FHSM */
 	ret = do_mmap_pgoff(vma->vm_file, start, size,
 			prot, flags, pgoff, &populate);
+#ifdef CONFIG_AUFS_FHSM
+	vma_fput(vma);
+#else
 	fput(file);
+#endif /* CONFIG_AUFS_FHSM */
 out:
 	up_write(&mm->mmap_sem);
 	if (populate)
@@ -2815,6 +2821,10 @@ static unsigned long do_brk(unsigned long addr, unsigned long len)
 	struct rb_node **rb_link, *rb_parent;
 	pgoff_t pgoff = addr >> PAGE_SHIFT;
 	int error;
+
+	len = PAGE_ALIGN(len);
+	if (!len)
+		return addr;
 
 	flags = VM_DATA_DEFAULT_FLAGS | VM_ACCOUNT | mm->def_flags;
 
@@ -2883,18 +2893,11 @@ out:
 	return addr;
 }
 
-unsigned long vm_brk(unsigned long addr, unsigned long request)
+unsigned long vm_brk(unsigned long addr, unsigned long len)
 {
 	struct mm_struct *mm = current->mm;
-	unsigned long len;
 	unsigned long ret;
 	bool populate;
-
-	len = PAGE_ALIGN(request);
-	if (len < request)
-		return -ENOMEM;
-	if (!len)
-		return addr;
 
 	down_write(&mm->mmap_sem);
 	ret = do_brk(addr, len);
@@ -3055,7 +3058,11 @@ struct vm_area_struct *copy_vma(struct vm_area_struct **vmap,
 		if (anon_vma_clone(new_vma, vma))
 			goto out_free_mempol;
 		if (new_vma->vm_file)
+#ifdef CONFIG_AUFS_FHSM
+			vma_get_file(new_vma);
+#else
 			get_file(new_vma->vm_file);
+#endif /* CONFIG_AUFS_FHSM */
 		if (new_vma->vm_ops && new_vma->vm_ops->open)
 			new_vma->vm_ops->open(new_vma);
 		vma_link(mm, new_vma, prev, rb_link, rb_parent);

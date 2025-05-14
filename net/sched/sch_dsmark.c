@@ -2,7 +2,6 @@
 
 /* Written 1998-2000 by Werner Almesberger, EPFL ICA */
 
-
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/slab.h>
@@ -31,7 +30,6 @@
  *   ...	 ...		...
  * 0xffff	0x10000		use entry [indices-1]
  */
-
 
 #define NO_DEFAULT_INDEX	(1 << 16)
 
@@ -199,13 +197,9 @@ static int dsmark_enqueue(struct sk_buff *skb, struct Qdisc *sch)
 	pr_debug("%s(skb %p,sch %p,[qdisc %p])\n", __func__, skb, sch, p);
 
 	if (p->set_tc_index) {
-		int wlen = skb_network_offset(skb);
-
 		switch (tc_skb_protocol(skb)) {
 		case htons(ETH_P_IP):
-			wlen += sizeof(struct iphdr);
-			if (!pskb_may_pull(skb, wlen) ||
-			    skb_try_make_writable(skb, wlen))
+			if (skb_cow_head(skb, sizeof(struct iphdr)))
 				goto drop;
 
 			skb->tc_index = ipv4_get_dsfield(ip_hdr(skb))
@@ -213,9 +207,7 @@ static int dsmark_enqueue(struct sk_buff *skb, struct Qdisc *sch)
 			break;
 
 		case htons(ETH_P_IPV6):
-			wlen += sizeof(struct ipv6hdr);
-			if (!pskb_may_pull(skb, wlen) ||
-			    skb_try_make_writable(skb, wlen))
+			if (skb_cow_head(skb, sizeof(struct ipv6hdr)))
 				goto drop;
 
 			skb->tc_index = ipv6_get_dsfield(ipv6_hdr(skb))

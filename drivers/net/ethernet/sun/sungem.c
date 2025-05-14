@@ -60,7 +60,8 @@
 #include <linux/sungem_phy.h>
 #include "sungem.h"
 
-#define STRIP_FCS
+/* Stripping FCS is causing problems, disabled for now */
+#undef STRIP_FCS
 
 #define DEFAULT_MSG	(NETIF_MSG_DRV		| \
 			 NETIF_MSG_PROBE	| \
@@ -434,7 +435,7 @@ static int gem_rxmac_reset(struct gem *gp)
 	writel(desc_dma & 0xffffffff, gp->regs + RXDMA_DBLOW);
 	writel(RX_RING_SIZE - 4, gp->regs + RXDMA_KICK);
 	val = (RXDMA_CFG_BASE | (RX_OFFSET << 10) |
-	       (ETH_HLEN << 13) | RXDMA_CFG_FTHRESH_128);
+	       ((14 / 2) << 13) | RXDMA_CFG_FTHRESH_128);
 	writel(val, gp->regs + RXDMA_CFG);
 	if (readl(gp->regs + GREG_BIFCFG) & GREG_BIFCFG_M66EN)
 		writel(((5 & RXDMA_BLANK_IPKTS) |
@@ -759,6 +760,7 @@ static int gem_rx(struct gem *gp, int work_to_do)
 	struct net_device *dev = gp->dev;
 	int entry, drops, work_done = 0;
 	u32 done;
+	__sum16 csum;
 
 	if (netif_msg_rx_status(gp))
 		printk(KERN_DEBUG "%s: rx interrupt, done: %d, rx_new: %d\n",
@@ -853,13 +855,9 @@ static int gem_rx(struct gem *gp, int work_to_do)
 			skb = copy_skb;
 		}
 
-		if (likely(dev->features & NETIF_F_RXCSUM)) {
-			__sum16 csum;
-
-			csum = (__force __sum16)htons((status & RXDCTRL_TCPCSUM) ^ 0xffff);
-			skb->csum = csum_unfold(csum);
-			skb->ip_summed = CHECKSUM_COMPLETE;
-		}
+		csum = (__force __sum16)htons((status & RXDCTRL_TCPCSUM) ^ 0xffff);
+		skb->csum = csum_unfold(csum);
+		skb->ip_summed = CHECKSUM_COMPLETE;
 		skb->protocol = eth_type_trans(skb, gp->dev);
 
 		napi_gro_receive(&gp->napi, skb);
@@ -1251,7 +1249,6 @@ static void gem_stop_dma(struct gem *gp)
 	/* Need to wait a bit ... done by the caller */
 }
 
-
 // XXX dbl check what that function should do when called on PCS PHY
 static void gem_begin_auto_negotiation(struct gem *gp, struct ethtool_cmd *ep)
 {
@@ -1365,7 +1362,6 @@ static int gem_set_link_modes(struct gem *gp)
 
 	netif_info(gp, link, gp->dev, "Link is up at %d Mbps, %s-duplex\n",
 		   speed, (full_duplex ? "full" : "half"));
-
 
 	/* We take the tx queue lock to avoid collisions between
 	 * this code, the tx path and the NAPI-driven error path
@@ -1757,7 +1753,7 @@ static void gem_init_dma(struct gem *gp)
 	writel(0, gp->regs + TXDMA_KICK);
 
 	val = (RXDMA_CFG_BASE | (RX_OFFSET << 10) |
-	       (ETH_HLEN << 13) | RXDMA_CFG_FTHRESH_128);
+	       ((14 / 2) << 13) | RXDMA_CFG_FTHRESH_128);
 	writel(val, gp->regs + RXDMA_CFG);
 
 	writel(desc_dma >> 32, gp->regs + RXDMA_DBHI);
@@ -1912,7 +1908,6 @@ static void gem_init_pause_thresholds(struct gem *gp)
 		gp->rx_pause_off = off;
 		gp->rx_pause_on = on;
 	}
-
 
 	/* Configure the chip "burst" DMA mode & enable some
 	 * HW bug fixes on Apple version
@@ -2071,7 +2066,6 @@ static void gem_reinit_chip(struct gem *gp)
 	gem_init_dma(gp);
 	gem_init_mac(gp);
 }
-
 
 static void gem_stop_phy(struct gem *gp, int wol)
 {
@@ -2639,7 +2633,6 @@ static void gem_set_msglevel(struct net_device *dev, u32 value)
 	gp->msg_enable = value;
 }
 
-
 /* Add more when I understand how to program the chip */
 /* like WAKE_UCAST | WAKE_MCAST | WAKE_BCAST */
 
@@ -2975,8 +2968,8 @@ static int gem_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	pci_set_drvdata(pdev, dev);
 
 	/* We can do scatter/gather and HW checksum */
-	dev->hw_features = NETIF_F_SG | NETIF_F_HW_CSUM | NETIF_F_RXCSUM;
-	dev->features = dev->hw_features;
+	dev->hw_features = NETIF_F_SG | NETIF_F_HW_CSUM;
+	dev->features |= dev->hw_features | NETIF_F_RXCSUM;
 	if (pci_using_dac)
 		dev->features |= NETIF_F_HIGHDMA;
 
@@ -3014,7 +3007,6 @@ err_disable_device:
 	return err;
 
 }
-
 
 static struct pci_driver gem_driver = {
 	.name		= GEM_MODULE_NAME,

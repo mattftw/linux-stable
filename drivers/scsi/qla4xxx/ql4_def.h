@@ -118,7 +118,6 @@
 #define ql4_printk(level, ha, format, arg...) \
 	dev_printk(level , &((ha)->pdev->dev) , format , ## arg)
 
-
 /*
  * Host adapter default definitions
  ***********************************/
@@ -167,8 +166,6 @@
 
 #define DEV_DB_NON_PERSISTENT	0
 #define DEV_DB_PERSISTENT	1
-
-#define QL4_ISP_REG_DISCONNECT 0xffffffffU
 
 #define COPY_ISID(dst_isid, src_isid) {			\
 	int i, j;					\

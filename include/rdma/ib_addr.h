@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * Copyright (c) 2005 Voltaire Inc.  All rights reserved.
  * Copyright (c) 2005 Intel Corporation.  All rights reserved.
@@ -123,8 +126,6 @@ int rdma_copy_addr(struct rdma_dev_addr *dev_addr, struct net_device *dev,
 	      const unsigned char *dst_dev_addr);
 
 int rdma_addr_size(struct sockaddr *addr);
-int rdma_addr_size_in6(struct sockaddr_in6 *addr);
-int rdma_addr_size_kss(struct __kernel_sockaddr_storage *addr);
 
 int rdma_addr_find_smac_by_sgid(union ib_gid *sgid, u8 *smac, u16 *vlan_id);
 int rdma_addr_find_dmac_by_grh(const union ib_gid *sgid, const union ib_gid *dgid,
@@ -258,17 +259,30 @@ static inline enum ib_mtu iboe_get_mtu(int mtu)
 
 static inline int iboe_get_rate(struct net_device *dev)
 {
+#if defined(MY_ABC_HERE)
+	struct ethtool_link_ksettings cmd;
+#else /* MY_ABC_HERE */
 	struct ethtool_cmd cmd;
+#endif /* MY_ABC_HERE */
 	u32 speed;
 	int err;
 
 	rtnl_lock();
+#if defined(MY_ABC_HERE)
+	err = __ethtool_get_link_ksettings(dev, &cmd);
+#else /* MY_ABC_HERE */
 	err = __ethtool_get_settings(dev, &cmd);
+#endif /* MY_ABC_HERE */
 	rtnl_unlock();
 	if (err)
 		return IB_RATE_PORT_CURRENT;
 
+#if defined(MY_ABC_HERE)
+	speed = cmd.base.speed;
+#else /* MY_ABC_HERE */
 	speed = ethtool_cmd_speed(&cmd);
+#endif /* MY_ABC_HERE */
+
 	if (speed >= 40000)
 		return IB_RATE_40_GBPS;
 	else if (speed >= 30000)

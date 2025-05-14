@@ -264,10 +264,8 @@ static void update_audio_tstamp(struct snd_pcm_substream *substream,
 				runtime->rate);
 		*audio_tstamp = ns_to_timespec(audio_nsecs);
 	}
-	if (!timespec_equal(&runtime->status->audio_tstamp, audio_tstamp)) {
-		runtime->status->audio_tstamp = *audio_tstamp;
-		runtime->status->tstamp = *curr_tstamp;
-	}
+	runtime->status->audio_tstamp = *audio_tstamp;
+	runtime->status->tstamp = *curr_tstamp;
 
 	/*
 	 * re-take a driver timestamp to let apps detect if the reference tstamp
@@ -578,6 +576,7 @@ static inline unsigned int muldiv32(unsigned int a, unsigned int b,
 {
 	u_int64_t n = (u_int64_t) a * b;
 	if (c == 0) {
+		snd_BUG_ON(!n);
 		*r = 0;
 		return UINT_MAX;
 	}
@@ -648,33 +647,27 @@ EXPORT_SYMBOL(snd_interval_refine);
 
 static int snd_interval_refine_first(struct snd_interval *i)
 {
-	const unsigned int last_max = i->max;
-
 	if (snd_BUG_ON(snd_interval_empty(i)))
 		return -EINVAL;
 	if (snd_interval_single(i))
 		return 0;
 	i->max = i->min;
-	if (i->openmin)
+	i->openmax = i->openmin;
+	if (i->openmax)
 		i->max++;
-	/* only exclude max value if also excluded before refine */
-	i->openmax = (i->openmax && i->max >= last_max);
 	return 1;
 }
 
 static int snd_interval_refine_last(struct snd_interval *i)
 {
-	const unsigned int last_min = i->min;
-
 	if (snd_BUG_ON(snd_interval_empty(i)))
 		return -EINVAL;
 	if (snd_interval_single(i))
 		return 0;
 	i->min = i->max;
-	if (i->openmax)
+	i->openmin = i->openmax;
+	if (i->openmin)
 		i->min--;
-	/* only exclude min value if also excluded before refine */
-	i->openmin = (i->openmin && i->min <= last_min);
 	return 1;
 }
 
@@ -794,7 +787,6 @@ void snd_interval_mulkdiv(const struct snd_interval *a, unsigned int k,
 }
 
 /* ---- */
-
 
 /**
  * snd_interval_ratnum - refine the interval value
@@ -1289,7 +1281,6 @@ static int snd_pcm_hw_rule_list(struct snd_pcm_hw_params *params,
 	return snd_interval_list(hw_param_interval(params, rule->var), list->count, list->list, list->mask);
 }		
 
-
 /**
  * snd_pcm_hw_constraint_list - apply a list of constraints to a parameter
  * @runtime: PCM runtime instance
@@ -1320,7 +1311,6 @@ static int snd_pcm_hw_rule_ranges(struct snd_pcm_hw_params *params,
 	return snd_interval_ranges(hw_param_interval(params, rule->var),
 				   r->count, r->ranges, r->mask);
 }
-
 
 /**
  * snd_pcm_hw_constraint_ranges - apply list of range constraints to a parameter
@@ -1647,7 +1637,6 @@ static int _snd_pcm_hw_param_first(struct snd_pcm_hw_params *params,
 	return changed;
 }
 
-
 /**
  * snd_pcm_hw_param_first - refine config space and return minimum value
  * @pcm: PCM instance
@@ -1669,7 +1658,7 @@ int snd_pcm_hw_param_first(struct snd_pcm_substream *pcm,
 		return changed;
 	if (params->rmask) {
 		int err = snd_pcm_hw_refine(pcm, params);
-		if (err < 0)
+		if (snd_BUG_ON(err < 0))
 			return err;
 	}
 	return snd_pcm_hw_param_value(params, var, dir);
@@ -1694,7 +1683,6 @@ static int _snd_pcm_hw_param_last(struct snd_pcm_hw_params *params,
 	return changed;
 }
 
-
 /**
  * snd_pcm_hw_param_last - refine config space and return maximum value
  * @pcm: PCM instance
@@ -1716,7 +1704,7 @@ int snd_pcm_hw_param_last(struct snd_pcm_substream *pcm,
 		return changed;
 	if (params->rmask) {
 		int err = snd_pcm_hw_refine(pcm, params);
-		if (err < 0)
+		if (snd_BUG_ON(err < 0))
 			return err;
 	}
 	return snd_pcm_hw_param_value(params, var, dir);
@@ -1849,6 +1837,8 @@ int snd_pcm_lib_ioctl(struct snd_pcm_substream *substream,
 		      unsigned int cmd, void *arg)
 {
 	switch (cmd) {
+	case SNDRV_PCM_IOCTL1_INFO:
+		return 0;
 	case SNDRV_PCM_IOCTL1_RESET:
 		return snd_pcm_lib_ioctl_reset(substream, arg);
 	case SNDRV_PCM_IOCTL1_CHANNEL_INFO:

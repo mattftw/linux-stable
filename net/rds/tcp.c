@@ -346,7 +346,7 @@ static void rds_tcp_kill_sock(struct net *net)
 	list_for_each_entry_safe(tc, _tc, &rds_tcp_conn_list, t_tcp_node) {
 		struct net *c_net = read_pnet(&tc->conn->c_net);
 
-		if (net != c_net)
+		if (net != c_net || !tc->t_sock)
 			continue;
 		list_move_tail(&tc->t_tcp_node, &tmp_list);
 	}
@@ -445,4 +445,3 @@ module_init(rds_tcp_init);
 MODULE_AUTHOR("Oracle Corporation <rds-devel@oss.oracle.com>");
 MODULE_DESCRIPTION("RDS: TCP transport");
 MODULE_LICENSE("Dual BSD/GPL");
-

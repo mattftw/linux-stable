@@ -180,7 +180,6 @@ struct iser_hdr {
 	__be64  read_va;
 } __attribute__((packed));
 
-
 #define ISER_ZBVA_NOT_SUPPORTED		0x80
 #define ISER_SEND_W_INV_NOT_SUPPORTED	0x40
 
@@ -450,7 +449,6 @@ struct iser_fr_desc {
 	struct list_head		  list;
 	struct iser_reg_resources	  rsc;
 	struct iser_pi_context		 *pi_ctx;
-	struct list_head                  all_list;
 };
 
 /**
@@ -464,7 +462,6 @@ struct iser_fr_pool {
 	struct list_head        list;
 	spinlock_t              lock;
 	int                     size;
-	struct list_head        all_list;
 };
 
 /**

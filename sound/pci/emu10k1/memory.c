@@ -71,14 +71,12 @@ static inline void set_silent_ptb(struct snd_emu10k1 *emu, int page)
 }
 #endif /* PAGE_SIZE */
 
-
 /*
  */
 static int synth_alloc_pages(struct snd_emu10k1 *hw, struct snd_emu10k1_memblk *blk);
 static int synth_free_pages(struct snd_emu10k1 *hw, struct snd_emu10k1_memblk *blk);
 
 #define get_emu10k1_memblk(l,member)	list_entry(l, struct snd_emu10k1_memblk, member)
-
 
 /* initialize emu10k1 part */
 static void emu10k1_memblk_init(struct snd_emu10k1_memblk *blk)
@@ -230,20 +228,19 @@ __found_pages:
 	return blk;
 }
 
-
 /*
  * check if the given pointer is valid for pages
  */
 static int is_valid_page(struct snd_emu10k1 *emu, dma_addr_t addr)
 {
 	if (addr & ~emu->dma_mask) {
-		dev_err_ratelimited(emu->card->dev,
+		dev_err(emu->card->dev,
 			"max memory size is 0x%lx (addr = 0x%lx)!!\n",
 			emu->dma_mask, (unsigned long)addr);
 		return 0;
 	}
 	if (addr & (EMUPAGESIZE-1)) {
-		dev_err_ratelimited(emu->card->dev, "page is not aligned\n");
+		dev_err(emu->card->dev, "page is not aligned\n");
 		return 0;
 	}
 	return 1;
@@ -334,7 +331,7 @@ snd_emu10k1_alloc_pages(struct snd_emu10k1 *emu, struct snd_pcm_substream *subst
 		else
 			addr = snd_pcm_sgbuf_get_addr(substream, ofs);
 		if (! is_valid_page(emu, addr)) {
-			dev_err_ratelimited(emu->card->dev,
+			dev_err(emu->card->dev,
 				"emu: failure page = %d\n", idx);
 			mutex_unlock(&hdr->block_mutex);
 			return NULL;
@@ -355,7 +352,6 @@ snd_emu10k1_alloc_pages(struct snd_emu10k1 *emu, struct snd_pcm_substream *subst
 	return (struct snd_util_memblk *)blk;
 }
 
-
 /*
  * release DMA buffer from page table
  */
@@ -365,7 +361,6 @@ int snd_emu10k1_free_pages(struct snd_emu10k1 *emu, struct snd_util_memblk *blk)
 		return -EINVAL;
 	return snd_emu10k1_synth_free(emu, blk);
 }
-
 
 /*
  * memory allocation using multiple pages (for synth)

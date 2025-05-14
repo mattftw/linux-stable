@@ -809,8 +809,7 @@ static ssize_t driver_override_store(struct device *dev,
 	struct platform_device *pdev = to_platform_device(dev);
 	char *driver_override, *old, *cp;
 
-	/* We need to keep extra room for a newline */
-	if (count >= (PAGE_SIZE - 1))
+	if (count > PATH_MAX)
 		return -EINVAL;
 
 	driver_override = kstrndup(buf, count, GFP_KERNEL);
@@ -848,7 +847,6 @@ static ssize_t driver_override_show(struct device *dev,
 	return len;
 }
 static DEVICE_ATTR_RW(driver_override);
-
 
 static struct attribute *platform_dev_attrs[] = {
 	&dev_attr_modalias.attr,
@@ -1409,4 +1407,3 @@ void __init early_platform_cleanup(void)
 		memset(&pd->dev.devres_head, 0, sizeof(pd->dev.devres_head));
 	}
 }
-

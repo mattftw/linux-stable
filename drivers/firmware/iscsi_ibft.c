@@ -66,7 +66,6 @@
  *
  */
 
-
 #include <linux/blkdev.h>
 #include <linux/capability.h>
 #include <linux/ctype.h>
@@ -513,7 +512,6 @@ static umode_t __init ibft_check_tgt_for(void *data, int type)
 	case ISCSI_BOOT_TGT_NIC_ASSOC:
 	case ISCSI_BOOT_TGT_CHAP_TYPE:
 		rc = S_IRUGO;
-		break;
 	case ISCSI_BOOT_TGT_NAME:
 		if (tgt->tgt_name_len)
 			rc = S_IRUGO;

@@ -515,7 +515,6 @@ static void lapic_timer_broadcast(const struct cpumask *mask)
 #endif
 }
 
-
 /*
  * The local apic timer can be used for any function which is CPU local.
  */
@@ -1091,7 +1090,6 @@ void lapic_shutdown(void)
 #endif
 		disable_local_APIC();
 
-
 	local_irq_restore(flags);
 }
 
@@ -1368,7 +1366,7 @@ void setup_local_APIC(void)
 	 * TODO: set up through-local-APIC from through-I/O-APIC? --macro
 	 */
 	value = apic_read(APIC_LVT0) & APIC_LVT_MASKED;
-	if (!cpu && (pic_mode || !value || skip_ioapic_setup)) {
+	if (!cpu && (pic_mode || !value)) {
 		value = APIC_DM_EXTINT;
 		apic_printk(APIC_VERBOSE, "enabled ExtINT on CPU#%d\n", cpu);
 	} else {

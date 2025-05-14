@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /* CPU control.
  * (C) 2001, 2002, 2003, 2004 Rusty Russell
  *
@@ -26,6 +29,13 @@
 #include <trace/events/power.h>
 
 #include "smpboot.h"
+
+#if defined(CONFIG_ARCH_RTD129X) && defined(MY_ABC_HERE) || \
+	defined(CONFIG_RTK_PLATFORM) && defined(CONFIG_SYNO_LSP_RTD1619)
+extern void rtk_cpu_power_down(int cpu);
+extern void rtk_cpu_power_up(int cpu);
+#endif /* CONFIG_ARCH_RTD129X && MY_ABC_HERE ||
+		  CONFIG_RTK_PLATFORM && CONFIG_SYNO_LSP_RTD1619 */
 
 #ifdef CONFIG_SMP
 /* Serializes the updates to cpu_online_mask, cpu_present_mask */
@@ -89,7 +99,6 @@ static struct {
 				  lock_map_acquire_tryread(&cpu_hotplug.dep_map)
 #define cpuhp_lock_acquire()      lock_map_acquire(&cpu_hotplug.dep_map)
 #define cpuhp_lock_release()      lock_map_release(&cpu_hotplug.dep_map)
-
 
 void get_online_cpus(void)
 {
@@ -184,17 +193,10 @@ void cpu_hotplug_disable(void)
 }
 EXPORT_SYMBOL_GPL(cpu_hotplug_disable);
 
-static void __cpu_hotplug_enable(void)
-{
-	if (WARN_ONCE(!cpu_hotplug_disabled, "Unbalanced cpu hotplug enable\n"))
-		return;
-	cpu_hotplug_disabled--;
-}
-
 void cpu_hotplug_enable(void)
 {
 	cpu_maps_update_begin();
-	__cpu_hotplug_enable();
+	WARN_ON(--cpu_hotplug_disabled < 0);
 	cpu_maps_update_done();
 }
 EXPORT_SYMBOL_GPL(cpu_hotplug_enable);
@@ -602,6 +604,13 @@ int disable_nonboot_cpus(void)
 			continue;
 		trace_suspend_resume(TPS("CPU_OFF"), cpu, true);
 		error = _cpu_down(cpu, 1);
+
+#if defined(CONFIG_ARCH_RTD129X) && defined(MY_ABC_HERE) || \
+	defined(CONFIG_RTK_PLATFORM) && defined(CONFIG_SYNO_LSP_RTD1619)
+		rtk_cpu_power_down(cpu);
+#endif /* CONIFG_ARCH_RTD129X && MY_ABC_HERE ||
+		  CONFIG_RTK_PLATFORM && CONFIG_SYNO_LSP_RTD1619 */
+
 		trace_suspend_resume(TPS("CPU_OFF"), cpu, false);
 		if (!error)
 			cpumask_set_cpu(cpu, frozen_cpus);
@@ -641,7 +650,7 @@ void enable_nonboot_cpus(void)
 
 	/* Allow everyone to use the CPU hotplug again */
 	cpu_maps_update_begin();
-	__cpu_hotplug_enable();
+	WARN_ON(--cpu_hotplug_disabled < 0);
 	if (cpumask_empty(frozen_cpus))
 		goto out;
 
@@ -651,6 +660,13 @@ void enable_nonboot_cpus(void)
 
 	for_each_cpu(cpu, frozen_cpus) {
 		trace_suspend_resume(TPS("CPU_ON"), cpu, true);
+
+#if defined(CONFIG_ARCH_RTD129X) && defined(MY_ABC_HERE) || \
+	defined(CONFIG_RTK_PLATFORM) && defined(CONFIG_SYNO_LSP_RTD1619)
+		rtk_cpu_power_up(cpu);
+#endif /* CONIFG_ARCH_RTD129X && MY_ABC_HERE ||
+		  CONFIG_RTK_PLATFORM && CONFIG_SYNO_LSP_RTD1619 */
+
 		error = _cpu_up(cpu, 1);
 		trace_suspend_resume(TPS("CPU_ON"), cpu, false);
 		if (!error) {
@@ -708,7 +724,6 @@ cpu_hotplug_pm_callback(struct notifier_block *nb,
 
 	return NOTIFY_OK;
 }
-
 
 static int __init cpu_hotplug_pm_sync_init(void)
 {
@@ -843,7 +858,11 @@ void init_cpu_online(const struct cpumask *src)
 	cpumask_copy(to_cpumask(cpu_online_bits), src);
 }
 
+#ifdef MY_DEF_HERE
+enum cpu_mitigations cpu_mitigations = CPU_MITIGATIONS_OFF;
+#else /* MY_DEF_HERE */
 enum cpu_mitigations cpu_mitigations = CPU_MITIGATIONS_AUTO;
+#endif /* MY_DEF_HERE */
 
 static int __init mitigations_parse_cmdline(char *arg)
 {
@@ -851,6 +870,9 @@ static int __init mitigations_parse_cmdline(char *arg)
 		cpu_mitigations = CPU_MITIGATIONS_OFF;
 	else if (!strcmp(arg, "auto"))
 		cpu_mitigations = CPU_MITIGATIONS_AUTO;
+	else
+		pr_crit("Unsupported mitigations=%s, system may still be vulnerable\n",
+			arg);
 
 	return 0;
 }

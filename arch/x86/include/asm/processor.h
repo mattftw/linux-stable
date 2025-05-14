@@ -106,6 +106,7 @@ struct cpuinfo_x86 {
 	__u8			x86_coreid_bits;
 
 	__u8			x86_cache_bits;
+	__u8			cu_id;
 	/* Max extended CPUID function supported: */
 	__u32			extended_cpuid_level;
 	/* Maximum supported CPUID level, -1=no CPUID: */
@@ -132,8 +133,6 @@ struct cpuinfo_x86 {
 	u16			phys_proc_id;
 	/* Core id: */
 	u16			cpu_core_id;
-	/* Compute unit id */
-	u8			compute_unit_id;
 	/* Index into per_cpu list: */
 	u16			cpu_index;
 	u32			microcode;
@@ -493,7 +492,6 @@ typedef struct {
 	unsigned long		seg;
 } mm_segment_t;
 
-
 /* Free all resources held by a thread. */
 extern void release_thread(struct task_struct *);
 
@@ -580,7 +578,7 @@ static inline void sync_core(void)
 {
 	int tmp;
 
-#ifdef CONFIG_X86_32
+#ifdef CONFIG_M486
 	/*
 	 * Do a CPUID if available, otherwise do a jump.  The jump
 	 * can conveniently enough be the jump around CPUID.

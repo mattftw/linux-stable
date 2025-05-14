@@ -15,7 +15,6 @@
 #include <linux/irq.h>
 #include <linux/gpio_keys.h>
 #include <linux/input.h>
-#include <linux/leds.h>
 #include <linux/gpio.h>
 #include <linux/usb/gpio_vbus.h>
 #include <linux/mtd/mtd.h>
@@ -685,7 +684,6 @@ static void __init vpac270_pmic_init(void)
 #else
 static inline void vpac270_pmic_init(void) {}
 #endif
-
 
 /******************************************************************************
  * Machine init

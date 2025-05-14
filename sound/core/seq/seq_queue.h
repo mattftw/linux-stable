@@ -59,7 +59,6 @@ struct snd_seq_queue {
 	snd_use_lock_t use_lock;
 };
 
-
 /* get the number of current queues */
 int snd_seq_queue_get_cur_queues(void);
 
@@ -69,9 +68,8 @@ int snd_seq_queues_init(void);
 /* delete queues */ 
 void snd_seq_queues_delete(void);
 
-
 /* create new queue (constructor) */
-struct snd_seq_queue *snd_seq_queue_alloc(int client, int locked, unsigned int flags);
+int snd_seq_queue_alloc(int client, int locked, unsigned int flags);
 
 /* delete queue (destructor) */
 int snd_seq_queue_delete(int client, int queueid);
@@ -134,6 +132,5 @@ int snd_seq_control_queue(struct snd_seq_event *ev, int atomic, int hop);
 #define u64_mod(x,y,r)	((r) = (u32)((u64)(x) % (u64)(y)))
 #define u64_divmod(x,y,q,r) (u64_div(x,y,q), u64_mod(x,y,r))
 #endif
-
 
 #endif

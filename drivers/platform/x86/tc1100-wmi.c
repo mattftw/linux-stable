@@ -52,9 +52,7 @@ struct tc1100_data {
 	u32 jogdial;
 };
 
-#ifdef CONFIG_PM
 static struct tc1100_data suspend_data;
-#endif
 
 /* --------------------------------------------------------------------------
 				Device Management
@@ -185,7 +183,6 @@ static int __init tc1100_probe(struct platform_device *device)
 {
 	return sysfs_create_group(&device->dev.kobj, &tc1100_attribute_group);
 }
-
 
 static int tc1100_remove(struct platform_device *device)
 {

@@ -14,7 +14,6 @@
  * (at your option) any later version.
  */
 
-
 /* #define DEBUG */
 /* #define VERBOSE_DEBUG */
 
@@ -57,7 +56,6 @@ __ffs_data_got_descs(struct ffs_data *ffs, char *data, size_t len);
 static int __must_check
 __ffs_data_got_strings(struct ffs_data *ffs, char *data, size_t len);
 
-
 /* The function structure ***************************************************/
 
 struct ffs_ep;
@@ -74,12 +72,10 @@ struct ffs_function {
 	struct usb_function		function;
 };
 
-
 static struct ffs_function *ffs_func_from_usb(struct usb_function *f)
 {
 	return container_of(f, struct ffs_function, function);
 }
-
 
 static inline enum ffs_setup_state
 ffs_setup_state_clear_cancelled(struct ffs_data *ffs)
@@ -87,7 +83,6 @@ ffs_setup_state_clear_cancelled(struct ffs_data *ffs)
 	return (enum ffs_setup_state)
 		cmpxchg(&ffs->setup_state, FFS_SETUP_CANCELLED, FFS_NO_SETUP);
 }
-
 
 static void ffs_func_eps_disable(struct ffs_function *func);
 static int __must_check ffs_func_eps_enable(struct ffs_function *func);
@@ -101,10 +96,8 @@ static int ffs_func_setup(struct usb_function *,
 static void ffs_func_suspend(struct usb_function *);
 static void ffs_func_resume(struct usb_function *);
 
-
 static int ffs_func_revmap_ep(struct ffs_function *func, u8 num);
 static int ffs_func_revmap_intf(struct ffs_function *func, u8 intf);
-
 
 /* The endpoints structures *************************************************/
 
@@ -191,7 +184,6 @@ static int ffs_mutex_lock(struct mutex *mutex, unsigned nonblock)
 	__attribute__((warn_unused_result, nonnull));
 static char *ffs_prepare_buffer(const char __user *buf, size_t len)
 	__attribute__((warn_unused_result, nonnull));
-
 
 /* Control file aka ep0 *****************************************************/
 
@@ -627,7 +619,6 @@ static const struct file_operations ffs_ep0_operations = {
 	.poll =		ffs_ep0_poll,
 };
 
-
 /* "Normal" endpoints operations ********************************************/
 
 static void ffs_epfile_io_complete(struct usb_ep *_ep, struct usb_request *req)
@@ -649,15 +640,11 @@ static void ffs_user_copy_worker(struct work_struct *work)
 	bool kiocb_has_eventfd = io_data->kiocb->ki_flags & IOCB_EVENTFD;
 
 	if (io_data->read && ret > 0) {
-		mm_segment_t oldfs = get_fs();
-
-		set_fs(USER_DS);
 		use_mm(io_data->mm);
 		ret = copy_to_iter(io_data->buf, ret, &io_data->data);
 		if (ret != io_data->req->actual && iov_iter_count(&io_data->data))
 			ret = -EFAULT;
 		unuse_mm(io_data->mm);
-		set_fs(oldfs);
 	}
 
 	io_data->kiocb->ki_complete(io_data->kiocb, ret, ret);
@@ -795,7 +782,7 @@ static ssize_t ffs_epfile_io(struct file *file, struct ffs_io_data *io_data)
 		}
 
 		if (io_data->aio) {
-			req = usb_ep_alloc_request(ep->ep, GFP_ATOMIC);
+			req = usb_ep_alloc_request(ep->ep, GFP_KERNEL);
 			if (unlikely(!req))
 				goto error_lock;
 
@@ -1071,7 +1058,6 @@ static const struct file_operations ffs_epfile_operations = {
 	.unlocked_ioctl =	ffs_epfile_ioctl,
 };
 
-
 /* File system and super block operations ***********************************/
 
 /*
@@ -1337,6 +1323,7 @@ ffs_fs_kill_sb(struct super_block *sb)
 	if (sb->s_fs_info) {
 		ffs_release_dev(sb->s_fs_info);
 		ffs_data_closed(sb->s_fs_info);
+		ffs_data_put(sb->s_fs_info);
 	}
 }
 
@@ -1347,7 +1334,6 @@ static struct file_system_type ffs_fs_type = {
 	.kill_sb	= ffs_fs_kill_sb,
 };
 MODULE_ALIAS_FS("functionfs");
-
 
 /* Driver's main init/cleanup functions *************************************/
 
@@ -1373,7 +1359,6 @@ static void functionfs_cleanup(void)
 	pr_info("unloading\n");
 	unregister_filesystem(&ffs_fs_type);
 }
-
 
 /* ffs_data and ffs_function construction and destruction code **************/
 
@@ -1508,7 +1493,6 @@ static void ffs_data_reset(struct ffs_data *ffs)
 	ffs->setup_state = FFS_NO_SETUP;
 	ffs->flags = 0;
 }
-
 
 static int functionfs_bind(struct ffs_data *ffs, struct usb_composite_dev *cdev)
 {
@@ -1671,12 +1655,12 @@ static int ffs_func_eps_enable(struct ffs_function *func)
 		ep->ep->driver_data = ep;
 		ep->ep->desc = ds;
 
-		if (needs_comp_desc) {
-			comp_desc = (struct usb_ss_ep_comp_descriptor *)(ds +
-					USB_DT_ENDPOINT_SIZE);
-			ep->ep->maxburst = comp_desc->bMaxBurst + 1;
+		comp_desc = (struct usb_ss_ep_comp_descriptor *)(ds +
+				USB_DT_ENDPOINT_SIZE);
+		ep->ep->maxburst = comp_desc->bMaxBurst + 1;
+
+		if (needs_comp_desc)
 			ep->ep->comp_desc = comp_desc;
-		}
 
 		ret = usb_ep_enable(ep->ep);
 		if (likely(!ret)) {
@@ -1696,7 +1680,6 @@ static int ffs_func_eps_enable(struct ffs_function *func)
 
 	return ret;
 }
-
 
 /* Parsing and building descriptors and strings *****************************/
 
@@ -2391,7 +2374,6 @@ error:
 	return -EINVAL;
 }
 
-
 /* Events handling and management *******************************************/
 
 static void __ffs_event_add(struct ffs_data *ffs,
@@ -2759,8 +2741,10 @@ static int _ffs_func_bind(struct usb_configuration *c,
 	struct ffs_data *ffs = func->ffs;
 
 	const int full = !!func->ffs->fs_descs_count;
-	const int high = !!func->ffs->hs_descs_count;
-	const int super = !!func->ffs->ss_descs_count;
+	const int high = gadget_is_dualspeed(func->gadget) &&
+		func->ffs->hs_descs_count;
+	const int super = gadget_is_superspeed(func->gadget) &&
+		func->ffs->ss_descs_count;
 
 	int fs_len, hs_len, ss_len, ret, i;
 	struct ffs_ep *eps_ptr;
@@ -2930,7 +2914,6 @@ static int ffs_func_bind(struct usb_configuration *c,
 	return ret;
 }
 
-
 /* Other USB function hooks *************************************************/
 
 static void ffs_reset_work(struct work_struct *work)
@@ -3037,7 +3020,7 @@ static int ffs_func_setup(struct usb_function *f,
 	__ffs_event_add(ffs, FUNCTIONFS_SETUP);
 	spin_unlock_irqrestore(&ffs->ev.waitq.lock, flags);
 
-	return creq->wLength == 0 ? USB_GADGET_DELAYED_STATUS : 0;
+	return 0;
 }
 
 static void ffs_func_suspend(struct usb_function *f)
@@ -3051,7 +3034,6 @@ static void ffs_func_resume(struct usb_function *f)
 	ENTER();
 	ffs_event_add(ffs_func_from_usb(f)->ffs, FUNCTIONFS_RESUME);
 }
-
 
 /* Endpoint and interface numbers reverse mapping ***************************/
 
@@ -3073,7 +3055,6 @@ static int ffs_func_revmap_intf(struct ffs_function *func, u8 intf)
 
 	return -EDOM;
 }
-
 
 /* Devices management *******************************************************/
 
@@ -3146,7 +3127,6 @@ static struct config_item_type ffs_func_type = {
 	.ct_item_ops	= &ffs_item_ops,
 	.ct_owner	= THIS_MODULE,
 };
-
 
 /* Function registration interface ******************************************/
 
@@ -3464,7 +3444,6 @@ static void ffs_closed(struct ffs_data *ffs)
 {
 	struct ffs_dev *ffs_obj;
 	struct f_fs_opts *opts;
-	struct config_item *ci;
 
 	ENTER();
 	ffs_dev_lock();
@@ -3485,15 +3464,11 @@ static void ffs_closed(struct ffs_data *ffs)
 		goto done;
 
 	if (opts->no_configfs || !opts->func_inst.group.cg_item.ci_parent
-	    || !atomic_read(&opts->func_inst.group.cg_item.ci_kref.refcount))
+	    || !kref_read(&opts->func_inst.group.cg_item.ci_kref))
 		goto done;
 
-	ci = opts->func_inst.group.cg_item.ci_parent->ci_parent;
-	ffs_dev_unlock();
-
-	if (test_bit(FFS_FL_BOUND, &ffs->flags))
-		unregister_gadget_item(ci);
-	return;
+	unregister_gadget_item(ffs_obj->opts->
+			       func_inst.group.cg_item.ci_parent->ci_parent);
 done:
 	ffs_dev_unlock();
 }

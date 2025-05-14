@@ -82,7 +82,6 @@ extern unsigned int vced_count, vcei_count;
  */
 #define TASK_UNMAPPED_BASE PAGE_ALIGN(TASK_SIZE / 3)
 
-
 #define NUM_FPU_REGS	32
 
 #ifdef CONFIG_CPU_HAS_MSA
@@ -131,7 +130,7 @@ struct mips_fpu_struct {
 
 #define NUM_DSP_REGS   6
 
-typedef unsigned long dspreg_t;
+typedef __u32 dspreg_t;
 
 struct mips_dsp_state {
 	dspreg_t	dspr[NUM_DSP_REGS];

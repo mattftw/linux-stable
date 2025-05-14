@@ -47,8 +47,6 @@
 #define ADT7516_MSB_AIN3		0xA
 #define ADT7516_MSB_AIN4		0xB
 #define ADT7316_DA_DATA_BASE		0x10
-#define ADT7316_DA_10_BIT_LSB_SHIFT	6
-#define ADT7316_DA_12_BIT_LSB_SHIFT	4
 #define ADT7316_DA_MSB_DATA_REGS	4
 #define ADT7316_LSB_DAC_A		0x10
 #define ADT7316_MSB_DAC_A		0x11
@@ -436,7 +434,6 @@ static ssize_t adt7316_store_ad_channel(struct device *dev,
 		config2 = chip->config2 & (~ADT7316_AD_SINGLE_CH_MASK);
 	}
 
-
 	config2 |= data;
 
 	ret = chip->bus.write(chip->bus.client, ADT7316_CONFIG2, config2);
@@ -727,7 +724,6 @@ static IIO_DEVICE_ATTR(AIN_internal_Vref, S_IRUGO | S_IWUSR,
 		adt7316_store_AIN_internal_Vref,
 		0);
 
-
 static ssize_t adt7316_show_enable_prop_DACA(struct device *dev,
 		struct device_attribute *attr,
 		char *buf)
@@ -928,7 +924,6 @@ static ssize_t adt7316_show_all_DAC_update_modes(struct device *dev,
 static IIO_DEVICE_ATTR(all_DAC_update_modes, S_IRUGO,
 		adt7316_show_all_DAC_update_modes, NULL, 0);
 
-
 static ssize_t adt7316_store_update_DAC(struct device *dev,
 		struct device_attribute *attr,
 		const char *buf,
@@ -1094,7 +1089,7 @@ static ssize_t adt7316_store_DAC_internal_Vref(struct device *dev,
 		ldac_config = chip->ldac_config & (~ADT7516_DAC_IN_VREF_MASK);
 		if (data & 0x1)
 			ldac_config |= ADT7516_DAC_AB_IN_VREF;
-		if (data & 0x2)
+		else if (data & 0x2)
 			ldac_config |= ADT7516_DAC_CD_IN_VREF;
 	} else {
 		ret = kstrtou8(buf, 16, &data);
@@ -1416,7 +1411,7 @@ static IIO_DEVICE_ATTR(ex_analog_temp_offset, S_IRUGO | S_IWUSR,
 static ssize_t adt7316_show_DAC(struct adt7316_chip_info *chip,
 		int channel, char *buf)
 {
-	u16 data = 0;
+	u16 data;
 	u8 msb, lsb, offset;
 	int ret;
 
@@ -1441,11 +1436,7 @@ static ssize_t adt7316_show_DAC(struct adt7316_chip_info *chip,
 	if (ret)
 		return -EIO;
 
-	if (chip->dac_bits == 12)
-		data = lsb >> ADT7316_DA_12_BIT_LSB_SHIFT;
-	else if (chip->dac_bits == 10)
-		data = lsb >> ADT7316_DA_10_BIT_LSB_SHIFT;
-	data |= msb << offset;
+	data = (msb << offset) + (lsb & ((1 << offset) - 1));
 
 	return sprintf(buf, "%d\n", data);
 }
@@ -1453,7 +1444,7 @@ static ssize_t adt7316_show_DAC(struct adt7316_chip_info *chip,
 static ssize_t adt7316_store_DAC(struct adt7316_chip_info *chip,
 		int channel, const char *buf, size_t len)
 {
-	u8 msb, lsb, lsb_reg, offset;
+	u8 msb, lsb, offset;
 	u16 data;
 	int ret;
 
@@ -1471,13 +1462,9 @@ static ssize_t adt7316_store_DAC(struct adt7316_chip_info *chip,
 		return -EINVAL;
 
 	if (chip->dac_bits > 8) {
-		lsb = data & ((1 << offset) - 1);
-		if (chip->dac_bits == 12)
-			lsb_reg = lsb << ADT7316_DA_12_BIT_LSB_SHIFT;
-		else
-			lsb_reg = lsb << ADT7316_DA_10_BIT_LSB_SHIFT;
+		lsb = data & (1 << offset);
 		ret = chip->bus.write(chip->bus.client,
-			ADT7316_DA_DATA_BASE + channel * 2, lsb_reg);
+			ADT7316_DA_DATA_BASE + channel * 2, lsb);
 		if (ret)
 			return -EIO;
 	}

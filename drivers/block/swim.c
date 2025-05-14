@@ -502,7 +502,6 @@ static int floppy_read_sectors(struct floppy_state *fs,
 	int side, track, sector;
 	int i, try;
 
-
 	swim_drive(base, fs->location);
 	for (i = req_sector; i < req_sector + sectors_nb; i++) {
 		int x;
@@ -868,17 +867,8 @@ static int swim_floppy_init(struct swim_priv *swd)
 
 exit_put_disks:
 	unregister_blkdev(FLOPPY_MAJOR, "fd");
-	do {
-		struct gendisk *disk = swd->unit[drive].disk;
-
-		if (disk) {
-			if (disk->queue) {
-				blk_cleanup_queue(disk->queue);
-				disk->queue = NULL;
-			}
-			put_disk(disk);
-		}
-	} while (drive--);
+	while (drive--)
+		put_disk(swd->unit[drive].disk);
 	return err;
 }
 

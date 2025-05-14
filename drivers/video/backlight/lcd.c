@@ -226,8 +226,6 @@ struct lcd_device *lcd_device_register(const char *name, struct device *parent,
 	dev_set_name(&new_ld->dev, "%s", name);
 	dev_set_drvdata(&new_ld->dev, devdata);
 
-	new_ld->ops = ops;
-
 	rc = device_register(&new_ld->dev);
 	if (rc) {
 		put_device(&new_ld->dev);
@@ -239,6 +237,8 @@ struct lcd_device *lcd_device_register(const char *name, struct device *parent,
 		device_unregister(&new_ld->dev);
 		return ERR_PTR(rc);
 	}
+
+	new_ld->ops = ops;
 
 	return new_ld;
 }
@@ -332,7 +332,6 @@ void devm_lcd_device_unregister(struct device *dev, struct lcd_device *ld)
 	WARN_ON(rc);
 }
 EXPORT_SYMBOL(devm_lcd_device_unregister);
-
 
 static void __exit lcd_class_exit(void)
 {

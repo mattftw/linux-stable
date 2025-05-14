@@ -89,6 +89,10 @@
 static const char banner[] __initconst = KERN_INFO \
 	"AX.25: bpqether driver version 004\n";
 
+static char bcast_addr[6]={0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+
+static char bpq_eth_addr[6];
+
 static int bpq_rcv(struct sk_buff *, struct net_device *, struct packet_type *, struct net_device *);
 static int bpq_device_event(struct notifier_block *, unsigned long, void *);
 
@@ -100,7 +104,6 @@ static struct packet_type bpq_packet_type __read_mostly = {
 static struct notifier_block bpq_dev_notifier = {
 	.notifier_call = bpq_device_event,
 };
-
 
 struct bpqdev {
 	struct list_head bpq_list;	/* list of bpq devices chain */
@@ -135,7 +138,6 @@ static void bpq_set_lockdep_class(struct net_device *dev)
 
 /* ------------------------------------------------------------------------ */
 
-
 /*
  *	Get the ethernet device for a BPQ device
  */
@@ -166,7 +168,6 @@ static inline int dev_is_ethdev(struct net_device *dev)
 }
 
 /* ------------------------------------------------------------------------ */
-
 
 /*
  *	Receive an AX.25 frame via an ethernet interface.
@@ -369,9 +370,7 @@ static int bpq_close(struct net_device *dev)
 	return 0;
 }
 
-
 /* ------------------------------------------------------------------------ */
-
 
 /*
  *	Proc filesystem
@@ -416,7 +415,6 @@ static void bpq_seq_stop(struct seq_file *seq, void *v)
 	rcu_read_unlock();
 }
 
-
 static int bpq_seq_show(struct seq_file *seq, void *v)
 {
 	if (v == SEQ_START_TOKEN)
@@ -457,7 +455,6 @@ static const struct file_operations bpq_info_fops = {
 	.llseek = seq_lseek,
 	.release = seq_release,
 };
-
 
 /* ------------------------------------------------------------------------ */
 
@@ -505,14 +502,13 @@ static int bpq_new_device(struct net_device *edev)
 	if (!ndev)
 		return -ENOMEM;
 
-		
 	bpq = netdev_priv(ndev);
 	dev_hold(edev);
 	bpq->ethdev = edev;
 	bpq->axdev = ndev;
 
-	eth_broadcast_addr(bpq->dest_addr);
-	eth_broadcast_addr(bpq->acpt_addr);
+	memcpy(bpq->dest_addr, bcast_addr, sizeof(bpq_eth_addr));
+	memcpy(bpq->acpt_addr, bcast_addr, sizeof(bpq_eth_addr));
 
 	err = register_netdevice(ndev);
 	if (err)
@@ -575,7 +571,6 @@ static int bpq_device_event(struct notifier_block *this,
 
 	return NOTIFY_DONE;
 }
-
 
 /* ------------------------------------------------------------------------ */
 

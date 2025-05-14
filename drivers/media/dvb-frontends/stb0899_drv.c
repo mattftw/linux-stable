@@ -552,8 +552,7 @@ int stb0899_write_regs(struct stb0899_state *state, unsigned int reg, u8 *data, 
 
 int stb0899_write_reg(struct stb0899_state *state, unsigned int reg, u8 data)
 {
-	u8 tmp = data;
-	return stb0899_write_regs(state, reg, &tmp, 1);
+	return stb0899_write_regs(state, reg, &data, 1);
 }
 
 /*
@@ -1264,7 +1263,6 @@ err:
 	return -EREMOTEIO;
 }
 
-
 static inline void CONVERT32(u32 x, char *str)
 {
 	*str++	= (x >> 24) & 0xff;
@@ -1614,7 +1612,6 @@ static struct dvb_frontend_ops stb0899_ops = {
 	.get_frontend_algo		= stb0899_frontend_algo,
 	.search				= stb0899_search,
 	.get_frontend                   = stb0899_get_frontend,
-
 
 	.read_status			= stb0899_read_status,
 	.read_snr			= stb0899_read_snr,

@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * cacheinfo support - processor cache information via sysfs
  *
@@ -16,7 +19,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <linux/acpi.h>
 #include <linux/bitops.h>
 #include <linux/cacheinfo.h>
 #include <linux/compiler.h>
@@ -40,7 +42,7 @@ struct cpu_cacheinfo *get_cpu_cacheinfo(unsigned int cpu)
 	return ci_cacheinfo(cpu);
 }
 
-#ifdef CONFIG_OF
+#if defined(CONFIG_OF) && !(defined(CONFIG_X86) && defined(MY_DEF_HERE))
 static int cache_setup_of_node(unsigned int cpu)
 {
 	struct device_node *np;
@@ -86,7 +88,7 @@ static inline bool cache_leaves_are_shared(struct cacheinfo *this_leaf,
 {
 	return sib_leaf->of_node == this_leaf->of_node;
 }
-#else
+#else /* defined(CONFIG_OF) && !(defined(CONFIG_X86) && defined(MY_DEF_HERE)) */
 static inline int cache_setup_of_node(unsigned int cpu) { return 0; }
 static inline bool cache_leaves_are_shared(struct cacheinfo *this_leaf,
 					   struct cacheinfo *sib_leaf)
@@ -98,23 +100,16 @@ static inline bool cache_leaves_are_shared(struct cacheinfo *this_leaf,
 	 */
 	return !(this_leaf->level == 1);
 }
-#endif
+#endif /* defined(CONFIG_OF) && !(defined(CONFIG_X86) && defined(MY_DEF_HERE */
 
 static int cache_shared_cpu_map_setup(unsigned int cpu)
 {
 	struct cpu_cacheinfo *this_cpu_ci = get_cpu_cacheinfo(cpu);
 	struct cacheinfo *this_leaf, *sib_leaf;
 	unsigned int index;
-	int ret = 0;
+	int ret;
 
-	if (this_cpu_ci->cpu_map_populated)
-		return 0;
-
-	if (of_have_populated_dt())
-		ret = cache_setup_of_node(cpu);
-	else if (!acpi_disabled)
-		/* No cache property/hierarchy support yet in ACPI */
-		ret = -ENOTSUPP;
+	ret = cache_setup_of_node(cpu);
 	if (ret)
 		return ret;
 
@@ -211,7 +206,8 @@ static int detect_cache_attributes(unsigned int cpu)
 	 */
 	ret = cache_shared_cpu_map_setup(cpu);
 	if (ret) {
-		pr_warn("Unable to detect cache hierarchy for CPU %d\n", cpu);
+		pr_warn("Unable to detect cache hierarchy from DT for CPU %d\n",
+			cpu);
 		goto free_ci;
 	}
 	return 0;

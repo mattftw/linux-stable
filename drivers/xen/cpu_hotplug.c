@@ -18,16 +18,15 @@ static void enable_hotplug_cpu(int cpu)
 
 static void disable_hotplug_cpu(int cpu)
 {
-	if (!cpu_is_hotpluggable(cpu))
-		return;
-	lock_device_hotplug();
-	if (cpu_online(cpu))
+	if (cpu_online(cpu)) {
+		lock_device_hotplug();
 		device_offline(get_cpu_device(cpu));
-	if (!cpu_online(cpu) && cpu_present(cpu)) {
-		xen_arch_unregister_cpu(cpu);
-		set_cpu_present(cpu, false);
+		unlock_device_hotplug();
 	}
-	unlock_device_hotplug();
+	if (cpu_present(cpu))
+		xen_arch_unregister_cpu(cpu);
+
+	set_cpu_present(cpu, false);
 }
 
 static int vcpu_online(unsigned int cpu)
@@ -120,4 +119,3 @@ static int __init setup_vcpu_hotplug_event(void)
 }
 
 arch_initcall(setup_vcpu_hotplug_event);
-

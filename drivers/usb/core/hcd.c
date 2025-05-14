@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * (C) Copyright Linus Torvalds 1999
  * (C) Copyright Johannes Erdfelt 1999-2001
@@ -48,7 +51,6 @@
 #include <linux/usb/phy.h>
 
 #include "usb.h"
-
 
 /*-------------------------------------------------------------------------*/
 
@@ -213,7 +215,6 @@ static const u8 usb11_rh_dev_descriptor[18] = {
 	0x01,       /*  __u8  iSerialNumber; */
 	0x01        /*  __u8  bNumConfigurations; */
 };
-
 
 /*-------------------------------------------------------------------------*/
 
@@ -460,7 +461,6 @@ rh_string(int id, struct usb_hcd const *hcd, u8 *data, unsigned len)
 	return ascii2desc(s, data, len);
 }
 
-
 /* Root hub control transfers execute synchronously */
 static int rh_call_control (struct usb_hcd *hcd, struct urb *urb)
 {
@@ -499,13 +499,10 @@ static int rh_call_control (struct usb_hcd *hcd, struct urb *urb)
 	 */
 	tbuf_size =  max_t(u16, sizeof(struct usb_hub_descriptor), wLength);
 	tbuf = kzalloc(tbuf_size, GFP_KERNEL);
-	if (!tbuf) {
-		status = -ENOMEM;
-		goto err_alloc;
-	}
+	if (!tbuf)
+		return -ENOMEM;
 
 	bufp = tbuf;
-
 
 	urb->actual_length = 0;
 	switch (typeReq) {
@@ -707,7 +704,6 @@ error:
 	}
 
 	kfree(tbuf);
- err_alloc:
 
 	/* any errors get returned through the urb completion */
 	spin_lock_irq(&hcd_root_hub_lock);
@@ -850,8 +846,6 @@ static int usb_rh_urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
 	return rc;
 }
 
-
-
 /*
  * Show & store the current value of authorized_default
  */
@@ -947,8 +941,6 @@ static struct attribute_group usb_bus_attr_group = {
 	.attrs = usb_bus_attrs,
 };
 
-
-
 /*-------------------------------------------------------------------------*/
 
 /**
@@ -990,13 +982,63 @@ static int usb_register_bus(struct usb_bus *bus)
 {
 	int result = -E2BIG;
 	int busnum;
+#ifdef MY_ABC_HERE
+	struct usb_hcd *usb_hcd = bus_to_hcd(bus);
+#endif /* MY_ABC_HERE */
 
 	mutex_lock(&usb_bus_list_lock);
+#ifdef MY_ABC_HERE
+	/* This is a workaround for random order of bus number
+	 * assignment happened only on platform RTD1296.
+	 * The primary hcd should be USB2.0 hcd.
+	 */
+
+	switch (usb_hcd->speed) {
+	case HCD_USB2:
+		if (0 == strncmp(bus->bus_name, "98013000.ehci", 13)) {
+			busnum = 1;
+		} else {
+			result = -EINVAL;
+			goto error_find_busnum;
+		}
+		break;
+	case HCD_USB3:
+	case HCD_USB31:
+		if (0 == strncmp(bus->bus_name, "xhci-hcd.2.auto", 15)) {
+			if (usb_hcd_is_primary_hcd(usb_hcd))
+				busnum = 2;
+			else
+				busnum = 3;
+		} else if (0 == strncmp(bus->bus_name, "xhci-hcd.5.auto", 15)) {
+			if (usb_hcd_is_primary_hcd(usb_hcd))
+				busnum = 4;
+			else
+				busnum = 5;
+		} else if (0 == strncmp(bus->bus_name, "xhci-hcd.8.auto", 15)) {
+			if (usb_hcd_is_primary_hcd(usb_hcd))
+				busnum = 6;
+			else
+				busnum = 7;
+		} else {
+			result = -EINVAL;
+			goto error_find_busnum;
+		}
+		break;
+	default:
+		busnum = find_next_zero_bit(busmap, USB_MAXBUS, 1);
+		if (busnum >= USB_MAXBUS) {
+			printk (KERN_ERR "%s: too many buses\n", usbcore_name);
+			goto error_find_busnum;
+		}
+	}
+
+#else /* MY_ABC_HERE */
 	busnum = find_next_zero_bit(busmap, USB_MAXBUS, 1);
 	if (busnum >= USB_MAXBUS) {
 		printk (KERN_ERR "%s: too many buses\n", usbcore_name);
 		goto error_find_busnum;
 	}
+#endif /* MY_ABC_HERE */
 	set_bit(busnum, busmap);
 	bus->busnum = busnum;
 
@@ -1200,7 +1242,6 @@ long usb_calc_bus_time (int speed, int is_input, int isoc, int bytecount)
 	}
 }
 EXPORT_SYMBOL_GPL(usb_calc_bus_time);
-
 
 /*-------------------------------------------------------------------------*/
 
@@ -1696,7 +1737,7 @@ int usb_hcd_unlink_urb (struct urb *urb, int status)
 		if (retval == 0)
 			retval = -EINPROGRESS;
 		else if (retval != -EIDRM && retval != -EBUSY)
-			dev_dbg(&udev->dev, "hcd_unlink_urb %pK fail %d\n",
+			dev_dbg(&udev->dev, "hcd_unlink_urb %p fail %d\n",
 					urb, retval);
 		usb_put_dev(udev);
 	}
@@ -1851,7 +1892,7 @@ void usb_hcd_flush_endpoint(struct usb_device *udev,
 	/* No more submits can occur */
 	spin_lock_irq(&hcd_urb_list_lock);
 rescan:
-	list_for_each_entry_reverse(urb, &ep->urb_list, urb_list) {
+	list_for_each_entry (urb, &ep->urb_list, urb_list) {
 		int	is_in;
 
 		if (urb->unlinked)
@@ -1863,7 +1904,7 @@ rescan:
 		/* kick hcd */
 		unlink1(hcd, urb, -ESHUTDOWN);
 		dev_dbg (hcd->self.controller,
-			"shutdown urb %pK ep%d%s%s\n",
+			"shutdown urb %p ep%d%s%s\n",
 			urb, usb_endpoint_num(&ep->desc),
 			is_in ? "in" : "out",
 			({	char *s;
@@ -2339,7 +2380,6 @@ void usb_hcd_resume_root_hub (struct usb_hcd *hcd)
 
 	spin_lock_irqsave (&hcd_root_hub_lock, flags);
 	if (hcd->rh_registered) {
-		pm_wakeup_event(&hcd->self.root_hub->dev, 0);
 		set_bit(HCD_FLAG_WAKEUP_PENDING, &hcd->flags);
 		queue_work(pm_wq, &hcd->wakeup_work);
 	}
@@ -2449,8 +2489,6 @@ void usb_hc_died (struct usb_hcd *hcd)
 	}
 	if (usb_hcd_is_primary_hcd(hcd) && hcd->shared_hcd) {
 		hcd = hcd->shared_hcd;
-		clear_bit(HCD_FLAG_RH_RUNNING, &hcd->flags);
-		set_bit(HCD_FLAG_DEAD, &hcd->flags);
 		if (hcd->rh_registered) {
 			clear_bit(HCD_FLAG_POLL_RH, &hcd->flags);
 
@@ -2514,7 +2552,6 @@ struct usb_hcd *usb_create_shared_hcd(const struct hc_driver *driver,
 		hcd->bandwidth_mutex = kmalloc(sizeof(*hcd->bandwidth_mutex),
 				GFP_KERNEL);
 		if (!hcd->bandwidth_mutex) {
-			kfree(hcd->address0_mutex);
 			kfree(hcd);
 			dev_dbg(dev, "hcd bandwidth mutex alloc failed\n");
 			return NULL;
@@ -2682,17 +2719,39 @@ static void usb_put_invalidate_rhdev(struct usb_hcd *hcd)
 }
 
 /**
+#if defined(MY_DEF_HERE)
+ * usb_add_hcd_with_phy_name - finish generic HCD structure initialization
+ * and register with generic phy name
+#else // MY_DEF_HERE
  * usb_add_hcd - finish generic HCD structure initialization and register
+#endif // MY_DEF_HERE
  * @hcd: the usb_hcd structure to initialize
  * @irqnum: Interrupt line to allocate
  * @irqflags: Interrupt type flags
+#if defined(MY_DEF_HERE)
+ * @phy_name: generic phy name
+#endif // MY_DEF_HERE
  *
+#if defined(MY_DEF_HERE)
+ * Finish the remaining parts of generic HCD initialization with generic phy
+ * name: allocate the buffers of consistent memory, register the bus,
+ * request the IRQ line, and call the driver's reset() and start() routines.
+#else // MY_DEF_HERE
  * Finish the remaining parts of generic HCD initialization: allocate the
  * buffers of consistent memory, register the bus, request the IRQ line,
  * and call the driver's reset() and start() routines.
+#endif // MY_DEF_HERE
  */
+#if defined(MY_DEF_HERE)
+int usb_add_hcd_with_phy_name(struct usb_hcd *hcd,
+			      unsigned int irqnum,
+			      unsigned long irqflags,
+			      const char *phy_name)
+
+#else /* MY_DEF_HERE */
 int usb_add_hcd(struct usb_hcd *hcd,
 		unsigned int irqnum, unsigned long irqflags)
+#endif /* MY_DEF_HERE */
 {
 	int retval;
 	struct usb_device *rhdev;
@@ -2716,7 +2775,16 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	}
 
 	if (IS_ENABLED(CONFIG_GENERIC_PHY) && !hcd->phy) {
+#if defined(MY_DEF_HERE)
+		struct phy *phy;
+
+		if (phy_name == NULL)
+			phy = phy_get(hcd->self.controller, "usb");
+		else
+			phy = phy_get(hcd->self.controller, phy_name);
+#else /* MY_DEF_HERE */
 		struct phy *phy = phy_get(hcd->self.controller, "usb");
+#endif /* MY_DEF_HERE */
 
 		if (IS_ERR(phy)) {
 			retval = PTR_ERR(phy);
@@ -2915,6 +2983,25 @@ err_phy:
 	}
 	return retval;
 }
+#if defined(MY_DEF_HERE)
+EXPORT_SYMBOL_GPL(usb_add_hcd_with_phy_name);
+
+/**
+ * usb_add_hcd - finish generic HCD structure initialization and register
+ * @hcd: the usb_hcd structure to initialize
+ * @irqnum: Interrupt line to allocate
+ * @irqflags: Interrupt type flags
+ *
+ * Finish the remaining parts of generic HCD initialization: allocate the
+ * buffers of consistent memory, register the bus, request the IRQ line,
+ * and call the driver's reset() and start() routines.
+ */
+int usb_add_hcd(struct usb_hcd *hcd,
+		unsigned int irqnum, unsigned long irqflags)
+{
+	return usb_add_hcd_with_phy_name(hcd, irqnum, irqflags, NULL);
+}
+#endif /* MY_DEF_HERE */
 EXPORT_SYMBOL_GPL(usb_add_hcd);
 
 /**
@@ -2998,7 +3085,6 @@ void usb_remove_hcd(struct usb_hcd *hcd)
 	}
 
 	usb_put_invalidate_rhdev(hcd);
-	hcd->flags = 0;
 }
 EXPORT_SYMBOL_GPL(usb_remove_hcd);
 

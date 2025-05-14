@@ -21,7 +21,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-
 /* driver definitions */
 #define DRIVER_AUTHOR "Joonyoung Shim <jy0922.shim@samsung.com>";
 #define DRIVER_CARD "Silicon Labs Si470x FM Radio Receiver"
@@ -36,7 +35,6 @@
 
 #include "radio-si470x.h"
 
-
 /* I2C Device ID List */
 static const struct i2c_device_id si470x_i2c_id[] = {
 	/* Generic Entry */
@@ -45,8 +43,6 @@ static const struct i2c_device_id si470x_i2c_id[] = {
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, si470x_i2c_id);
-
-
 
 /**************************************************************************
  * Module Parameters
@@ -71,8 +67,6 @@ static unsigned short max_rds_errors = 1;
 module_param(max_rds_errors, ushort, 0644);
 MODULE_PARM_DESC(max_rds_errors, "RDS maximum block errors: *1*");
 
-
-
 /**************************************************************************
  * I2C Definitions
  **************************************************************************/
@@ -85,8 +79,6 @@ MODULE_PARM_DESC(max_rds_errors, "RDS maximum block errors: *1*");
 #define READ_REG_NUM		RADIO_REGISTER_NUM
 #define READ_INDEX(i)		((i + RADIO_REGISTER_NUM - 0x0a) % READ_REG_NUM)
 
-
-
 /**************************************************************************
  * General Driver Functions - REGISTERs
  **************************************************************************/
@@ -96,7 +88,7 @@ MODULE_PARM_DESC(max_rds_errors, "RDS maximum block errors: *1*");
  */
 int si470x_get_register(struct si470x_device *radio, int regnr)
 {
-	__be16 buf[READ_REG_NUM];
+	u16 buf[READ_REG_NUM];
 	struct i2c_msg msgs[1] = {
 		{
 			.addr = radio->client->addr,
@@ -114,14 +106,13 @@ int si470x_get_register(struct si470x_device *radio, int regnr)
 	return 0;
 }
 
-
 /*
  * si470x_set_register - write register
  */
 int si470x_set_register(struct si470x_device *radio, int regnr)
 {
 	int i;
-	__be16 buf[WRITE_REG_NUM];
+	u16 buf[WRITE_REG_NUM];
 	struct i2c_msg msgs[1] = {
 		{
 			.addr = radio->client->addr,
@@ -139,8 +130,6 @@ int si470x_set_register(struct si470x_device *radio, int regnr)
 	return 0;
 }
 
-
-
 /**************************************************************************
  * General Driver Functions - ENTIRE REGISTERS
  **************************************************************************/
@@ -151,7 +140,7 @@ int si470x_set_register(struct si470x_device *radio, int regnr)
 static int si470x_get_all_registers(struct si470x_device *radio)
 {
 	int i;
-	__be16 buf[READ_REG_NUM];
+	u16 buf[READ_REG_NUM];
 	struct i2c_msg msgs[1] = {
 		{
 			.addr = radio->client->addr,
@@ -169,8 +158,6 @@ static int si470x_get_all_registers(struct si470x_device *radio)
 
 	return 0;
 }
-
-
 
 /**************************************************************************
  * File Operations Interface
@@ -207,7 +194,6 @@ done:
 	return retval;
 }
 
-
 /*
  * si470x_fops_release - file release
  */
@@ -221,8 +207,6 @@ int si470x_fops_release(struct file *file)
 
 	return v4l2_fh_release(file);
 }
-
-
 
 /**************************************************************************
  * Video4Linux Interface
@@ -242,8 +226,6 @@ int si470x_vidioc_querycap(struct file *file, void *priv,
 
 	return 0;
 }
-
-
 
 /**************************************************************************
  * I2C Interface
@@ -342,7 +324,6 @@ static irqreturn_t si470x_i2c_interrupt(int irq, void *dev_id)
 end:
 	return IRQ_HANDLED;
 }
-
 
 /*
  * si470x_i2c_probe - probe for the device
@@ -448,7 +429,6 @@ err_initial:
 	return retval;
 }
 
-
 /*
  * si470x_i2c_remove - remove the device
  */
@@ -462,7 +442,6 @@ static int si470x_i2c_remove(struct i2c_client *client)
 
 	return 0;
 }
-
 
 #ifdef CONFIG_PM_SLEEP
 /*
@@ -480,7 +459,6 @@ static int si470x_i2c_suspend(struct device *dev)
 
 	return 0;
 }
-
 
 /*
  * si470x_i2c_resume - resume the device
@@ -501,7 +479,6 @@ static int si470x_i2c_resume(struct device *dev)
 
 static SIMPLE_DEV_PM_OPS(si470x_i2c_pm, si470x_i2c_suspend, si470x_i2c_resume);
 #endif
-
 
 /*
  * si470x_i2c_driver - i2c driver interface

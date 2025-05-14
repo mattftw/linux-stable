@@ -16,7 +16,6 @@
 #include <linux/bitops.h>
 #include <linux/string.h>
 #include <linux/platform_device.h>
-#include <linux/dma-mapping.h>
 #include <linux/slab.h>
 
 #include <asm/byteorder.h>
@@ -24,7 +23,6 @@
 #include <asm/amigahw.h>
 
 #include "zorro.h"
-
 
     /*
      *  Zorro Expansion Devices
@@ -34,7 +32,6 @@ unsigned int zorro_num_autocon;
 struct zorro_dev_init zorro_autocon_init[ZORRO_NUM_AUTO] __initdata;
 struct zorro_dev *zorro_autocon;
 
-
     /*
      *  Zorro bus
      */
@@ -43,7 +40,6 @@ struct zorro_bus {
 	struct device dev;
 	struct zorro_dev devices[0];
 };
-
 
     /*
      *  Find Zorro Devices
@@ -65,7 +61,6 @@ struct zorro_dev *zorro_find_device(zorro_id id, struct zorro_dev *from)
 }
 EXPORT_SYMBOL(zorro_find_device);
 
-
     /*
      *  Bitmask indicating portions of available Zorro II RAM that are unused
      *  by the system. Every bit represents a 64K chunk, for a maximum of 8MB
@@ -83,7 +78,6 @@ EXPORT_SYMBOL(zorro_find_device);
 
 DECLARE_BITMAP(zorro_unused_z2ram, 128);
 EXPORT_SYMBOL(zorro_unused_z2ram);
-
 
 static void __init mark_region(unsigned long start, unsigned long end,
 			       int flag)
@@ -109,7 +103,6 @@ static void __init mark_region(unsigned long start, unsigned long end,
 	}
 }
 
-
 static struct resource __init *zorro_find_parent_resource(
 	struct platform_device *bridge, struct zorro_dev *z)
 {
@@ -123,8 +116,6 @@ static struct resource __init *zorro_find_parent_resource(
 	}
 	return &iomem_resource;
 }
-
-
 
 static int __init amiga_zorro_probe(struct platform_device *pdev)
 {
@@ -186,17 +177,6 @@ static int __init amiga_zorro_probe(struct platform_device *pdev)
 		z->dev.parent = &bus->dev;
 		z->dev.bus = &zorro_bus_type;
 		z->dev.id = i;
-		switch (z->rom.er_Type & ERT_TYPEMASK) {
-		case ERT_ZORROIII:
-			z->dev.coherent_dma_mask = DMA_BIT_MASK(32);
-			break;
-
-		case ERT_ZORROII:
-		default:
-			z->dev.coherent_dma_mask = DMA_BIT_MASK(24);
-			break;
-		}
-		z->dev.dma_mask = &z->dev.coherent_dma_mask;
 	}
 
 	/* ... then register them */

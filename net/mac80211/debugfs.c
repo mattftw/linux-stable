@@ -58,7 +58,6 @@ static const struct file_operations name## _ops = {			\
 #define DEBUGFS_ADD_MODE(name, mode)					\
 	debugfs_create_file(#name, mode, phyd, local, &name## _ops);
 
-
 DEBUGFS_READONLY_FILE(user_power, "%d",
 		      local->user_power_level);
 DEBUGFS_READONLY_FILE(power, "%d",
@@ -91,7 +90,7 @@ static const struct file_operations reset_ops = {
 };
 #endif
 
-static const char *hw_flag_names[] = {
+static const char *hw_flag_names[NUM_IEEE80211_HW_FLAGS + 1] = {
 #define FLAG(F)	[IEEE80211_HW_##F] = #F
 	FLAG(HAS_RATE_CONTROL),
 	FLAG(RX_INCLUDES_FCS),
@@ -125,6 +124,9 @@ static const char *hw_flag_names[] = {
 	FLAG(TDLS_WIDER_BW),
 	FLAG(SUPPORTS_AMSDU_IN_AMPDU),
 	FLAG(BEACON_TX_STATUS),
+
+	/* keep last for the build bug below */
+	(void *)0x1
 #undef FLAG
 };
 
@@ -144,7 +146,7 @@ static ssize_t hwflags_read(struct file *file, char __user *user_buf,
 	/* fail compilation if somebody adds or removes
 	 * a flag without updating the name array above
 	 */
-	BUILD_BUG_ON(ARRAY_SIZE(hw_flag_names) != NUM_IEEE80211_HW_FLAGS);
+	BUILD_BUG_ON(hw_flag_names[NUM_IEEE80211_HW_FLAGS] != (void *)0x1);
 
 	for (i = 0; i < NUM_IEEE80211_HW_FLAGS; i++) {
 		if (test_bit(i, local->hw.flags))

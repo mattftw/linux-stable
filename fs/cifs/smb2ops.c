@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  *  SMB2 version specific operations
  *
@@ -143,14 +146,14 @@ smb2_wait_mtu_credits(struct TCP_Server_Info *server, unsigned int size,
 
 			scredits = server->credits;
 			/* can deadlock with reopen */
-			if (scredits <= 8) {
+			if (scredits == 1) {
 				*num = SMB2_MAX_BUFFER_SIZE;
 				*credits = 0;
 				break;
 			}
 
-			/* leave some credits for reopen and other ops */
-			scredits -= 8;
+			/* leave one credit for a possible reopen */
+			scredits--;
 			*num = min_t(unsigned int, size,
 				     scredits * SMB2_MAX_BUFFER_SIZE);
 
@@ -720,7 +723,6 @@ smb2_read_data_length(char *buf)
 	return le32_to_cpu(rsp->DataLength);
 }
 
-
 static int
 smb2_sync_read(const unsigned int xid, struct cifs_fid *pfid,
 	       struct cifs_io_parms *parms, unsigned int *bytes_read,
@@ -909,17 +911,17 @@ smb2_query_dir_first(const unsigned int xid, struct cifs_tcon *tcon,
 	rc = SMB2_open(xid, &oparms, utf16_path, &oplock, NULL, NULL);
 	kfree(utf16_path);
 	if (rc) {
-		cifs_dbg(FYI, "open dir failed rc=%d\n", rc);
+		cifs_dbg(VFS, "open dir failed\n");
 		return rc;
 	}
 
 	srch_inf->entries_in_buffer = 0;
-	srch_inf->index_of_last_entry = 2;
+	srch_inf->index_of_last_entry = 0;
 
 	rc = SMB2_query_directory(xid, tcon, fid->persistent_fid,
 				  fid->volatile_fid, 0, srch_inf);
 	if (rc) {
-		cifs_dbg(FYI, "query directory failed rc=%d\n", rc);
+		cifs_dbg(VFS, "query directory failed\n");
 		SMB2_close(xid, tcon, fid->persistent_fid, fid->volatile_fid);
 	}
 	return rc;
@@ -960,18 +962,6 @@ smb2_is_status_pending(char *buf, struct TCP_Server_Info *server, int length)
 		wake_up(&server->request_q);
 	}
 
-	return true;
-}
-
-static bool
-smb2_is_session_expired(char *buf)
-{
-	struct smb2_hdr *hdr = (struct smb2_hdr *)buf;
-
-	if (hdr->Status != STATUS_NETWORK_SESSION_EXPIRED)
-		return false;
-
-	cifs_dbg(FYI, "Session expired\n");
 	return true;
 }
 
@@ -1266,11 +1256,9 @@ static long smb3_simple_falloc(struct file *file, struct cifs_tcon *tcon,
 	}
 	/* BB: else ... in future add code to extend file and set sparse */
 
-
 	free_xid(xid);
 	return rc;
 }
-
 
 static long smb3_fallocate(struct file *file, struct cifs_tcon *tcon, int mode,
 			   loff_t off, loff_t len)
@@ -1389,13 +1377,21 @@ smb3_set_oplock_level(struct cifsInodeInfo *cinode, __u32 oplock,
 }
 
 static bool
+#ifdef MY_ABC_HERE
+smb2_is_read_op(struct TCP_Server_Info *server, __u32 oplock)
+#else
 smb2_is_read_op(__u32 oplock)
+#endif /* MY_ABC_HERE */
 {
 	return oplock == SMB2_OPLOCK_LEVEL_II;
 }
 
 static bool
+#ifdef MY_ABC_HERE
+smb21_is_read_op(struct TCP_Server_Info *server, __u32 oplock)
+#else
 smb21_is_read_op(__u32 oplock)
+#endif /* MY_ABC_HERE */
 {
 	return (oplock & SMB2_LEASE_READ_CACHING_HE) &&
 	       !(oplock & SMB2_LEASE_WRITE_CACHING_HE);
@@ -1415,7 +1411,11 @@ map_oplock_to_lease(u8 oplock)
 }
 
 static char *
+#ifdef MY_ABC_HERE
+smb2_create_lease_buf(struct TCP_Server_Info *server, u8 *lease_key, u8 oplock)
+#else
 smb2_create_lease_buf(u8 *lease_key, u8 oplock)
+#endif /* MY_ABC_HERE */
 {
 	struct create_lease *buf;
 
@@ -1442,7 +1442,11 @@ smb2_create_lease_buf(u8 *lease_key, u8 oplock)
 }
 
 static char *
+#ifdef MY_ABC_HERE
+smb3_create_lease_buf(struct TCP_Server_Info *server, u8 *lease_key, u8 oplock)
+#else
 smb3_create_lease_buf(u8 *lease_key, u8 oplock)
+#endif /* MY_ABC_HERE */
 {
 	struct create_lease_v2 *buf;
 
@@ -1469,7 +1473,11 @@ smb3_create_lease_buf(u8 *lease_key, u8 oplock)
 }
 
 static __u8
+#ifdef MY_ABC_HERE
+smb2_parse_lease_buf(struct TCP_Server_Info *server, void *buf, unsigned int *epoch)
+#else
 smb2_parse_lease_buf(void *buf, unsigned int *epoch)
+#endif /* MY_ABC_HERE */
 {
 	struct create_lease *lc = (struct create_lease *)buf;
 
@@ -1480,7 +1488,11 @@ smb2_parse_lease_buf(void *buf, unsigned int *epoch)
 }
 
 static __u8
+#ifdef MY_ABC_HERE
+smb3_parse_lease_buf(struct TCP_Server_Info *server, void *buf, unsigned int *epoch)
+#else
 smb3_parse_lease_buf(void *buf, unsigned int *epoch)
+#endif /* MY_ABC_HERE */
 {
 	struct create_lease_v2 *lc = (struct create_lease_v2 *)buf;
 
@@ -1523,7 +1535,6 @@ struct smb_version_operations smb20_operations = {
 	.clear_stats = smb2_clear_stats,
 	.print_stats = smb2_print_stats,
 	.is_oplock_break = smb2_is_valid_oplock_break,
-	.handle_cancelled_mid = smb2_handle_cancelled_mid,
 	.downgrade_oplock = smb2_downgrade_oplock,
 	.need_neg = smb2_need_neg,
 	.negotiate = smb2_negotiate,
@@ -1564,7 +1575,6 @@ struct smb_version_operations smb20_operations = {
 	.close_dir = smb2_close_dir,
 	.calc_smb_size = smb2_calc_size,
 	.is_status_pending = smb2_is_status_pending,
-	.is_session_expired = smb2_is_session_expired,
 	.oplock_response = smb2_oplock_response,
 	.queryfs = smb2_queryfs,
 	.mand_lock = smb2_mand_lock,
@@ -1603,7 +1613,6 @@ struct smb_version_operations smb21_operations = {
 	.clear_stats = smb2_clear_stats,
 	.print_stats = smb2_print_stats,
 	.is_oplock_break = smb2_is_valid_oplock_break,
-	.handle_cancelled_mid = smb2_handle_cancelled_mid,
 	.downgrade_oplock = smb2_downgrade_oplock,
 	.need_neg = smb2_need_neg,
 	.negotiate = smb2_negotiate,
@@ -1646,7 +1655,6 @@ struct smb_version_operations smb21_operations = {
 	.close_dir = smb2_close_dir,
 	.calc_smb_size = smb2_calc_size,
 	.is_status_pending = smb2_is_status_pending,
-	.is_session_expired = smb2_is_session_expired,
 	.oplock_response = smb2_oplock_response,
 	.queryfs = smb2_queryfs,
 	.mand_lock = smb2_mand_lock,
@@ -1686,7 +1694,6 @@ struct smb_version_operations smb30_operations = {
 	.print_stats = smb2_print_stats,
 	.dump_share_caps = smb2_dump_share_caps,
 	.is_oplock_break = smb2_is_valid_oplock_break,
-	.handle_cancelled_mid = smb2_handle_cancelled_mid,
 	.downgrade_oplock = smb2_downgrade_oplock,
 	.need_neg = smb2_need_neg,
 	.negotiate = smb2_negotiate,
@@ -1729,7 +1736,6 @@ struct smb_version_operations smb30_operations = {
 	.close_dir = smb2_close_dir,
 	.calc_smb_size = smb2_calc_size,
 	.is_status_pending = smb2_is_status_pending,
-	.is_session_expired = smb2_is_session_expired,
 	.oplock_response = smb2_oplock_response,
 	.queryfs = smb2_queryfs,
 	.mand_lock = smb2_mand_lock,
@@ -1775,7 +1781,6 @@ struct smb_version_operations smb311_operations = {
 	.print_stats = smb2_print_stats,
 	.dump_share_caps = smb2_dump_share_caps,
 	.is_oplock_break = smb2_is_valid_oplock_break,
-	.handle_cancelled_mid = smb2_handle_cancelled_mid,
 	.downgrade_oplock = smb2_downgrade_oplock,
 	.need_neg = smb2_need_neg,
 	.negotiate = smb2_negotiate,
@@ -1818,7 +1823,6 @@ struct smb_version_operations smb311_operations = {
 	.close_dir = smb2_close_dir,
 	.calc_smb_size = smb2_calc_size,
 	.is_status_pending = smb2_is_status_pending,
-	.is_session_expired = smb2_is_session_expired,
 	.oplock_response = smb2_oplock_response,
 	.queryfs = smb2_queryfs,
 	.mand_lock = smb2_mand_lock,

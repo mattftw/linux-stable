@@ -277,7 +277,6 @@ static void sym_selectclock(struct sym_hcb *np, u_char scntl3)
 	OUTB(np, nc_stest3, 0x00);		/* Restart scsi clock 	*/
 }
 
-
 /*
  *  Determine the chip's clock frequency.
  *
@@ -536,7 +535,7 @@ sym_getsync(struct sym_hcb *np, u_char dt, u_char sfac, u_char *divp, u_char *fa
 	 *  Look for the greatest clock divisor that allows an 
 	 *  input speed faster than the period.
 	 */
-	while (--div > 0)
+	while (div-- > 0)
 		if (kpc >= (div_10M[div] << 2)) break;
 
 	/*
@@ -3836,7 +3835,6 @@ out_ok:
 out_reject:
 	OUTL_DSP(np, SCRIPTB_BA(np, msg_bad));
 }
-
 
 /*
  *  chip calculation of the data residual.

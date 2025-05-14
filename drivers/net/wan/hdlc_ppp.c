@@ -61,7 +61,6 @@ struct cp_header {
 	__be16 len;
 };
 
-
 struct proto {
 	struct net_device *dev;
 	struct timer_list timer;
@@ -163,7 +162,6 @@ static __be16 ppp_type_trans(struct sk_buff *skb, struct net_device *dev)
 	}
 }
 
-
 static int ppp_hard_header(struct sk_buff *skb, struct net_device *dev,
 			   u16 type, const void *daddr, const void *saddr,
 			   unsigned int len)
@@ -195,7 +193,6 @@ static int ppp_hard_header(struct sk_buff *skb, struct net_device *dev,
 	}
 	return sizeof(struct hdlc_header);
 }
-
 
 static void ppp_tx_flush(void)
 {
@@ -258,7 +255,6 @@ static void ppp_tx_cp(struct net_device *dev, u16 pid, u8 code,
 	skb_queue_tail(&tx_queue, skb);
 }
 
-
 /* State transition table (compare STD-51)
    Events                                   Actions
    TO+  = Timeout with counter > 0          irc = Initialize-Restart-Count
@@ -295,7 +291,6 @@ static int cp_table[EVENTS][STATES] = {
 	{    0    ,      1      ,  2  ,    3    ,  3  ,    5    ,    6    }, /* RXJ+ */
 	{    0    ,      1      ,  1  ,    1    ,  1  ,    1    ,IRC|STR|2}, /* RXJ- */
 };
-
 
 /* SCA: RCR+ must supply id, len and data
    SCN: RCR- must supply code, id, len and data
@@ -370,7 +365,6 @@ static void ppp_cp_event(struct net_device *dev, u16 pid, u16 event, u8 code,
 	       proto_name(pid), event_names[event], state_names[proto->state]);
 #endif
 }
-
 
 static void ppp_cp_parse_cr(struct net_device *dev, u16 pid, u8 id,
 			    unsigned int req_len, const u8 *data)
@@ -574,10 +568,7 @@ static void ppp_timer(unsigned long arg)
 			ppp_cp_event(proto->dev, proto->pid, TO_GOOD, 0, 0,
 				     0, NULL);
 			proto->restart_counter--;
-		} else if (netif_carrier_ok(proto->dev))
-			ppp_cp_event(proto->dev, proto->pid, TO_GOOD, 0, 0,
-				     0, NULL);
-		else
+		} else
 			ppp_cp_event(proto->dev, proto->pid, TO_BAD, 0, 0,
 				     0, NULL);
 		break;
@@ -603,7 +594,6 @@ static void ppp_timer(unsigned long arg)
 	spin_unlock_irqrestore(&ppp->lock, flags);
 	ppp_tx_flush();
 }
-
 
 static void ppp_start(struct net_device *dev)
 {
@@ -697,7 +687,6 @@ static int ppp_ioctl(struct net_device *dev, struct ifreq *ifr)
 	return -EINVAL;
 }
 
-
 static int __init mod_init(void)
 {
 	skb_queue_head_init(&tx_queue);
@@ -709,7 +698,6 @@ static void __exit mod_exit(void)
 {
 	unregister_hdlc_protocol(&proto);
 }
-
 
 module_init(mod_init);
 module_exit(mod_exit);

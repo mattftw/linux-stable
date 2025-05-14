@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * Open Host Controller Interface (OHCI) driver for USB.
  *
@@ -45,7 +48,6 @@
 #include <asm/unaligned.h>
 #include <asm/byteorder.h>
 
-
 #define DRIVER_AUTHOR "Roman Weissgaerber, David Brownell"
 #define DRIVER_DESC "USB 1.1 'Open' Host Controller (OHCI) Driver"
 
@@ -86,7 +88,6 @@ static void io_watchdog_func(unsigned long _ohci);
 #include "ohci-mem.c"
 #include "ohci-q.c"
 
-
 /*
  * On architectures with edge-triggered interrupts we must never return
  * IRQ_NONE.
@@ -96,7 +97,6 @@ static void io_watchdog_func(unsigned long _ohci);
 #else
 #define IRQ_NOTMINE	IRQ_NONE
 #endif
-
 
 /* Some boards misreport power switching/overcurrent */
 static bool distrust_firmware = 1;
@@ -444,8 +444,7 @@ static int ohci_init (struct ohci_hcd *ohci)
 	struct usb_hcd *hcd = ohci_to_hcd(ohci);
 
 	/* Accept arbitrarily long scatter-gather lists */
-	if (!(hcd->driver->flags & HCD_LOCAL_MEM))
-		hcd->self.sg_tablesize = ~0;
+	hcd->self.sg_tablesize = ~0;
 
 	if (distrust_firmware)
 		ohci->flags |= OHCI_QUIRK_HUB_POWER;
@@ -1092,7 +1091,6 @@ int ohci_suspend(struct usb_hcd *hcd, bool do_wakeup)
 }
 EXPORT_SYMBOL_GPL(ohci_suspend);
 
-
 int ohci_resume(struct usb_hcd *hcd, bool hibernated)
 {
 	struct ohci_hcd		*ohci = hcd_to_ohci(hcd);
@@ -1256,6 +1254,13 @@ MODULE_LICENSE ("GPL");
 #define PLATFORM_DRIVER		ohci_hcd_tilegx_driver
 #endif
 
+#if defined(MY_ABC_HERE) || defined(CONFIG_SYNO_LSP_RTD1619)
+#ifdef CONFIG_USB_OHCI_RTK
+#include "ohci-rtk.c"
+#define	PLATFORM_DRIVER		ohci_rtk_driver
+#endif /* CONFIG_USB_OHCI_RTK */
+#endif /* MY_ABC_HERE || CONFIG_SYNO_LSP_RTD1619 */
+
 static int __init ohci_hcd_mod_init(void)
 {
 	int retval = 0;
@@ -1383,4 +1388,3 @@ static void __exit ohci_hcd_mod_exit(void)
 	clear_bit(USB_OHCI_LOADED, &usb_hcds_loaded);
 }
 module_exit(ohci_hcd_mod_exit);
-

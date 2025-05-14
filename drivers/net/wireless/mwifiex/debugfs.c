@@ -22,7 +22,6 @@
 #include "main.h"
 #include "11n.h"
 
-
 static struct dentry *mwifiex_dfs_dir;
 
 static char *bss_modes[] = {
@@ -115,8 +114,7 @@ mwifiex_info_read(struct file *file, char __user *ubuf,
 	if (GET_BSS_ROLE(priv) == MWIFIEX_BSS_ROLE_STA) {
 		p += sprintf(p, "multicast_count=\"%d\"\n",
 			     netdev_mc_count(netdev));
-		p += sprintf(p, "essid=\"%.*s\"\n", info.ssid.ssid_len,
-			     info.ssid.ssid);
+		p += sprintf(p, "essid=\"%s\"\n", info.ssid.ssid);
 		p += sprintf(p, "bssid=\"%pM\"\n", info.bssid);
 		p += sprintf(p, "channel=\"%d\"\n", (int) info.bss_chan);
 		p += sprintf(p, "country_code = \"%s\"\n", info.country_code);
@@ -252,7 +250,6 @@ mwifiex_getlog_read(struct file *file, char __user *ubuf,
 		     stats.wep_icv_error[3],
 		     stats.bcn_rcv_cnt,
 		     stats.bcn_miss_cnt);
-
 
 	ret = simple_read_from_buffer(ubuf, count, ppos, (char *) page,
 				      (unsigned long) p - page);
@@ -456,7 +453,6 @@ mwifiex_regrdwr_write(struct file *file,
 
 	if (!buf)
 		return -ENOMEM;
-
 
 	if (copy_from_user(buf, ubuf, buf_size)) {
 		ret = -EFAULT;
@@ -696,7 +692,6 @@ mwifiex_rdeeprom_write(struct file *file,
 	if (!buf)
 		return -ENOMEM;
 
-
 	if (copy_from_user(buf, ubuf, buf_size)) {
 		ret = -EFAULT;
 		goto done;
@@ -931,7 +926,6 @@ static const struct file_operations mwifiex_dfs_##name##_fops = {       \
 	.write = mwifiex_##name##_write,                                \
 	.open = simple_open,                                            \
 };
-
 
 MWIFIEX_DFS_FILE_READ_OPS(info);
 MWIFIEX_DFS_FILE_READ_OPS(debug);

@@ -976,7 +976,6 @@ vortex_fifo_setwtctrl(vortex_t * vortex, int fifo, int ctrl, int priority,
 		}
     } while ((temp & FIFO_RDONLY)&&(temp & FIFO_VALID)&&(temp != 0xFFFFFFFF));
 	
-	
 	if (valid) {
 		if (temp & FIFO_VALID) {
 			temp = 0x40000;
@@ -1220,7 +1219,6 @@ static int vortex_adbdma_bufshift(vortex_t * vortex, int adbdma)
 
 	return delta;
 }
-
 
 static void vortex_adbdma_resetup(vortex_t *vortex, int adbdma) {
 	stream_t *dma = &vortex->dma_adb[adbdma];
@@ -2150,7 +2148,8 @@ vortex_adb_allocroute(vortex_t *vortex, int dma, int nr_ch, int dir,
 							   stream->resources, en,
 							   VORTEX_RESOURCE_SRC)) < 0) {
 					memset(stream->resources, 0,
-					       sizeof(stream->resources));
+					       sizeof(unsigned char) *
+					       VORTEX_RESOURCE_LAST);
 					return -EBUSY;
 				}
 				if (stream->type != VORTEX_PCM_A3D) {
@@ -2160,7 +2159,7 @@ vortex_adb_allocroute(vortex_t *vortex, int dma, int nr_ch, int dir,
 								   VORTEX_RESOURCE_MIXIN)) < 0) {
 						memset(stream->resources,
 						       0,
-						       sizeof(stream->resources));
+						       sizeof(unsigned char) * VORTEX_RESOURCE_LAST);
 						return -EBUSY;
 					}
 				}
@@ -2173,7 +2172,8 @@ vortex_adb_allocroute(vortex_t *vortex, int dma, int nr_ch, int dir,
 						   stream->resources, en,
 						   VORTEX_RESOURCE_A3D)) < 0) {
 				memset(stream->resources, 0,
-				       sizeof(stream->resources));
+				       sizeof(unsigned char) *
+				       VORTEX_RESOURCE_LAST);
 				dev_err(vortex->card->dev,
 					"out of A3D sources. Sorry\n");
 				return -EBUSY;
@@ -2279,9 +2279,6 @@ vortex_adb_allocroute(vortex_t *vortex, int dma, int nr_ch, int dir,
 	} else {
 		int src[2], mix[2];
 
-		if (nr_ch < 1)
-			return -EINVAL;
-
 		/* Get SRC and MIXER hardware resources. */
 		for (i = 0; i < nr_ch; i++) {
 			if ((mix[i] =
@@ -2290,7 +2287,8 @@ vortex_adb_allocroute(vortex_t *vortex, int dma, int nr_ch, int dir,
 						   VORTEX_RESOURCE_MIXOUT))
 			    < 0) {
 				memset(stream->resources, 0,
-				       sizeof(stream->resources));
+				       sizeof(unsigned char) *
+				       VORTEX_RESOURCE_LAST);
 				return -EBUSY;
 			}
 			if ((src[i] =
@@ -2298,7 +2296,8 @@ vortex_adb_allocroute(vortex_t *vortex, int dma, int nr_ch, int dir,
 						   stream->resources, en,
 						   VORTEX_RESOURCE_SRC)) < 0) {
 				memset(stream->resources, 0,
-				       sizeof(stream->resources));
+				       sizeof(unsigned char) *
+				       VORTEX_RESOURCE_LAST);
 				return -EBUSY;
 			}
 		}

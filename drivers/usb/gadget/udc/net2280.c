@@ -68,7 +68,6 @@
 
 #define USE_RDK_LEDS		/* GPIO pins control three LEDs */
 
-
 static const char driver_name[] = "net2280";
 static const char driver_desc[] = DRIVER_DESC;
 
@@ -870,6 +869,9 @@ static void start_queue(struct net2280_ep *ep, u32 dmactl, u32 td_dma)
 	(void) readl(&ep->dev->pci->pcimstctl);
 
 	writel(BIT(DMA_START), &dma->dmastat);
+
+	if (!ep->is_in)
+		stop_out_naking(ep);
 }
 
 static void start_dma(struct net2280_ep *ep, struct net2280_request *req)
@@ -908,7 +910,6 @@ static void start_dma(struct net2280_ep *ep, struct net2280_request *req)
 			writel(BIT(DMA_START), &dma->dmastat);
 			return;
 		}
-		stop_out_naking(ep);
 	}
 
 	tmp = dmactl_default;
@@ -1270,9 +1271,9 @@ static int net2280_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 			break;
 	}
 	if (&req->req != _req) {
-		ep->stopped = stopped;
 		spin_unlock_irqrestore(&ep->dev->lock, flags);
-		ep_dbg(ep->dev, "%s: Request mismatch\n", __func__);
+		dev_err(&ep->dev->pdev->dev, "%s: Request mismatch\n",
+								__func__);
 		return -EINVAL;
 	}
 
@@ -1540,13 +1541,10 @@ static int net2280_pullup(struct usb_gadget *_gadget, int is_on)
 		writel(tmp | BIT(USB_DETECT_ENABLE), &dev->usb->usbctl);
 	} else {
 		writel(tmp & ~BIT(USB_DETECT_ENABLE), &dev->usb->usbctl);
-		stop_activity(dev, NULL);
+		stop_activity(dev, dev->driver);
 	}
 
 	spin_unlock_irqrestore(&dev->lock, flags);
-
-	if (!is_on && dev->driver)
-		dev->driver->disconnect(&dev->gadget);
 
 	return 0;
 }
@@ -1856,7 +1854,6 @@ done:
 	return PAGE_SIZE - size;
 }
 static DEVICE_ATTR_RO(queues);
-
 
 #else
 
@@ -2744,7 +2741,6 @@ static void defect7374_workaround(struct net2280 *dev, struct usb_ctrlrequest r)
 		continue;
 	}
 
-
 	if (ack_wait_timeout >= DEFECT_7374_NUMBEROF_MAX_WAIT_LOOPS) {
 		ep_err(dev, "FAIL: Defect 7374 workaround waited but failed "
 		"to detect SS host's data phase ACK.");
@@ -3344,7 +3340,6 @@ __acquires(dev->lock)
 	tmp = BIT(SUSPEND_REQUEST_CHANGE_INTERRUPT);
 	if (stat & tmp) {
 		writel(tmp, &dev->regs->irqstat1);
-		spin_unlock(&dev->lock);
 		if (stat & BIT(SUSPEND_REQUEST_INTERRUPT)) {
 			if (dev->driver->suspend)
 				dev->driver->suspend(&dev->gadget);
@@ -3355,7 +3350,6 @@ __acquires(dev->lock)
 				dev->driver->resume(&dev->gadget);
 			/* at high speed, note erratum 0133 */
 		}
-		spin_lock(&dev->lock);
 		stat &= ~tmp;
 	}
 
@@ -3733,7 +3727,6 @@ static void net2280_shutdown(struct pci_dev *pdev)
 	writel(0, &dev->usb->usbctl);
 
 }
-
 
 /*-------------------------------------------------------------------------*/
 

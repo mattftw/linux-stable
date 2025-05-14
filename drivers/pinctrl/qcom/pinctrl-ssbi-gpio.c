@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * Copyright (c) 2015, Sony Mobile Communications AB.
  * Copyright (c) 2013, The Linux Foundation. All rights reserved.
@@ -180,7 +183,6 @@ static const char *pm8xxx_get_group_name(struct pinctrl_dev *pctldev,
 	return pm8xxx_groups[group];
 }
 
-
 static int pm8xxx_get_group_pins(struct pinctrl_dev *pctldev,
 				 unsigned group,
 				 const unsigned **pins,
@@ -259,32 +261,22 @@ static int pm8xxx_pin_config_get(struct pinctrl_dev *pctldev,
 
 	switch (param) {
 	case PIN_CONFIG_BIAS_DISABLE:
-		if (pin->bias != PM8XXX_GPIO_BIAS_NP)
-			return -EINVAL;
-		arg = 1;
+		arg = pin->bias == PM8XXX_GPIO_BIAS_NP;
 		break;
 	case PIN_CONFIG_BIAS_PULL_DOWN:
-		if (pin->bias != PM8XXX_GPIO_BIAS_PD)
-			return -EINVAL;
-		arg = 1;
+		arg = pin->bias == PM8XXX_GPIO_BIAS_PD;
 		break;
 	case PIN_CONFIG_BIAS_PULL_UP:
-		if (pin->bias > PM8XXX_GPIO_BIAS_PU_1P5_30)
-			return -EINVAL;
-		arg = 1;
+		arg = pin->bias <= PM8XXX_GPIO_BIAS_PU_1P5_30;
 		break;
 	case PM8XXX_QCOM_PULL_UP_STRENGTH:
 		arg = pin->pull_up_strength;
 		break;
 	case PIN_CONFIG_BIAS_HIGH_IMPEDANCE:
-		if (!pin->disable)
-			return -EINVAL;
-		arg = 1;
+		arg = pin->disable;
 		break;
 	case PIN_CONFIG_INPUT_ENABLE:
-		if (pin->mode != PM8XXX_GPIO_MODE_INPUT)
-			return -EINVAL;
-		arg = 1;
+		arg = pin->mode == PM8XXX_GPIO_MODE_INPUT;
 		break;
 	case PIN_CONFIG_OUTPUT:
 		if (pin->mode & PM8XXX_GPIO_MODE_OUTPUT)
@@ -299,14 +291,10 @@ static int pm8xxx_pin_config_get(struct pinctrl_dev *pctldev,
 		arg = pin->output_strength;
 		break;
 	case PIN_CONFIG_DRIVE_PUSH_PULL:
-		if (pin->open_drain)
-			return -EINVAL;
-		arg = 1;
+		arg = !pin->open_drain;
 		break;
 	case PIN_CONFIG_DRIVE_OPEN_DRAIN:
-		if (!pin->open_drain)
-			return -EINVAL;
-		arg = 1;
+		arg = pin->open_drain;
 		break;
 	default:
 		return -EINVAL;
@@ -535,7 +523,6 @@ static int pm8xxx_gpio_of_xlate(struct gpio_chip *chip,
 	return gpio_desc->args[0] - 1;
 }
 
-
 static int pm8xxx_gpio_to_irq(struct gpio_chip *chip, unsigned offset)
 {
 	struct pm8xxx_gpio *pctrl = container_of(chip, struct pm8xxx_gpio, chip);
@@ -744,7 +731,11 @@ static int pm8xxx_gpio_probe(struct platform_device *pdev)
 
 	pctrl->chip = pm8xxx_gpio_template;
 	pctrl->chip.base = -1;
+#if defined(MY_DEF_HERE)
+	pctrl->chip.parent = &pdev->dev;
+#else /* MY_DEF_HERE */
 	pctrl->chip.dev = &pdev->dev;
+#endif /* MY_DEF_HERE */
 	pctrl->chip.of_node = pdev->dev.of_node;
 	pctrl->chip.of_gpio_n_cells = 2;
 	pctrl->chip.label = dev_name(pctrl->dev);

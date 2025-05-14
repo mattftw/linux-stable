@@ -42,8 +42,6 @@ struct ovl_fs {
 	long lower_namelen;
 	/* pathnames of lower and upper dirs, for show_options */
 	struct ovl_config config;
-	/* creds of process who forced instantiation of super block */
-	const struct cred *creator_cred;
 };
 
 struct ovl_dir_cache;
@@ -214,7 +212,7 @@ void ovl_dentry_update(struct dentry *dentry, struct dentry *upperdentry)
 {
 	struct ovl_entry *oe = dentry->d_fsdata;
 
-	WARN_ON(!mutex_is_locked(&upperdentry->d_parent->d_inode->i_mutex));
+	WARN_ON(!inode_is_locked(upperdentry->d_parent->d_inode));
 	WARN_ON(oe->__upperdentry);
 	BUG_ON(!upperdentry->d_inode);
 	/*
@@ -229,7 +227,7 @@ void ovl_dentry_version_inc(struct dentry *dentry)
 {
 	struct ovl_entry *oe = dentry->d_fsdata;
 
-	WARN_ON(!mutex_is_locked(&dentry->d_inode->i_mutex));
+	WARN_ON(!inode_is_locked(dentry->d_inode));
 	oe->version++;
 }
 
@@ -237,7 +235,7 @@ u64 ovl_dentry_version_get(struct dentry *dentry)
 {
 	struct ovl_entry *oe = dentry->d_fsdata;
 
-	WARN_ON(!mutex_is_locked(&dentry->d_inode->i_mutex));
+	WARN_ON(!inode_is_locked(dentry->d_inode));
 	return oe->version;
 }
 
@@ -246,13 +244,6 @@ bool ovl_is_whiteout(struct dentry *dentry)
 	struct inode *inode = dentry->d_inode;
 
 	return inode && IS_WHITEOUT(inode);
-}
-
-const struct cred *ovl_override_creds(struct super_block *sb)
-{
-	struct ovl_fs *ofs = sb->s_fs_info;
-
-	return override_creds(ofs->creator_cred);
 }
 
 static bool ovl_is_opaquedir(struct dentry *dentry)
@@ -402,9 +393,9 @@ static inline struct dentry *ovl_lookup_real(struct dentry *dir,
 {
 	struct dentry *dentry;
 
-	mutex_lock(&dir->d_inode->i_mutex);
+	inode_lock(dir->d_inode);
 	dentry = lookup_one_len(name->name, dir, name->len);
-	mutex_unlock(&dir->d_inode->i_mutex);
+	inode_unlock(dir->d_inode);
 
 	if (IS_ERR(dentry)) {
 		if (PTR_ERR(dentry) == -ENOENT)
@@ -596,7 +587,6 @@ static void ovl_put_super(struct super_block *sb)
 	kfree(ufs->config.lowerdir);
 	kfree(ufs->config.upperdir);
 	kfree(ufs->config.workdir);
-	put_cred(ufs->creator_cred);
 	kfree(ufs);
 }
 
@@ -764,7 +754,7 @@ static struct dentry *ovl_workdir_create(struct vfsmount *mnt,
 	if (err)
 		return ERR_PTR(err);
 
-	mutex_lock_nested(&dir->i_mutex, I_MUTEX_PARENT);
+	inode_lock_nested(dir, I_MUTEX_PARENT);
 retry:
 	work = lookup_one_len(OVL_WORKDIR_NAME, dentry,
 			      strlen(OVL_WORKDIR_NAME));
@@ -784,7 +774,7 @@ retry:
 				goto out_dput;
 
 			retried = true;
-			ovl_workdir_cleanup(dir, mnt, work, 0);
+			ovl_cleanup(dir, work);
 			dput(work);
 			goto retry;
 		}
@@ -809,7 +799,7 @@ retry:
 			goto out_dput;
 	}
 out_unlock:
-	mutex_unlock(&dir->i_mutex);
+	inode_unlock(dir);
 	mnt_drop_write(mnt);
 
 	return work;
@@ -1064,26 +1054,6 @@ static int ovl_fill_super(struct super_block *sb, void *data, int silent)
 			sb->s_flags |= MS_RDONLY;
 			ufs->workdir = NULL;
 		}
-
-		/*
-		 * Upper should support d_type, else whiteouts are visible.
-		 * Given workdir and upper are on same fs, we can do
-		 * iterate_dir() on workdir. This check requires successful
-		 * creation of workdir in previous step.
-		 */
-		if (ufs->workdir) {
-			err = ovl_check_d_type_supported(&workpath);
-			if (err < 0)
-				goto out_put_workdir;
-
-			/*
-			 * We allowed this configuration and don't want to
-			 * break users over kernel upgrade. So warn instead
-			 * of erroring out.
-			 */
-			if (!err)
-				pr_warn("overlayfs: upper fs needs to support d_type.\n");
-		}
 	}
 
 	err = -ENOMEM;
@@ -1117,14 +1087,10 @@ static int ovl_fill_super(struct super_block *sb, void *data, int silent)
 	else
 		sb->s_d_op = &ovl_dentry_operations;
 
-	ufs->creator_cred = prepare_creds();
-	if (!ufs->creator_cred)
-		goto out_put_lower_mnt;
-
 	err = -ENOMEM;
 	oe = ovl_alloc_entry(numlower);
 	if (!oe)
-		goto out_put_cred;
+		goto out_put_lower_mnt;
 
 	root_dentry = d_make_root(ovl_new_inode(sb, S_IFDIR, oe));
 	if (!root_dentry)
@@ -1157,8 +1123,6 @@ static int ovl_fill_super(struct super_block *sb, void *data, int silent)
 
 out_free_oe:
 	kfree(oe);
-out_put_cred:
-	put_cred(ufs->creator_cred);
 out_put_lower_mnt:
 	for (i = 0; i < ufs->numlower; i++)
 		mntput(ufs->lower_mnt[i]);

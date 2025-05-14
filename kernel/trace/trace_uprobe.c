@@ -149,15 +149,6 @@ static void FETCH_FUNC_NAME(memory, string)(struct pt_regs *regs,
 		return;
 
 	ret = strncpy_from_user(dst, src, maxlen);
-	if (ret == maxlen)
-		dst[ret - 1] = '\0';
-	else if (ret >= 0)
-		/*
-		 * Include the terminating null byte. In this case it
-		 * was copied by strncpy_from_user but not accounted
-		 * for in ret.
-		 */
-		ret++;
 
 	if (ret < 0) {	/* Failed to fetch string */
 		((u8 *)get_rloc_data(dest))[0] = '\0';
@@ -976,7 +967,7 @@ probe_event_disable(struct trace_uprobe *tu, struct trace_event_file *file)
 
 		list_del_rcu(&link->list);
 		/* synchronize with u{,ret}probe_trace_func */
-		synchronize_rcu();
+		synchronize_sched();
 		kfree(link);
 
 		if (!list_empty(&tu->tp.files))
@@ -1229,7 +1220,6 @@ static int uprobe_dispatcher(struct uprobe_consumer *con, struct pt_regs *regs)
 	struct uprobe_cpu_buffer *ucb;
 	int dsize, esize;
 	int ret = 0;
-
 
 	tu = container_of(con, struct trace_uprobe, consumer);
 	tu->nhit++;

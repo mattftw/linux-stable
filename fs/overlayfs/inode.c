@@ -66,11 +66,11 @@ int ovl_setattr(struct dentry *dentry, struct iattr *attr)
 		if (attr->ia_valid & (ATTR_KILL_SUID|ATTR_KILL_SGID))
 			attr->ia_valid &= ~ATTR_MODE;
 
-		mutex_lock(&upperdentry->d_inode->i_mutex);
+		inode_lock(upperdentry->d_inode);
 		err = notify_change(upperdentry, attr, NULL);
 		if (!err)
 			ovl_copyattr(upperdentry->d_inode, dentry->d_inode);
-		mutex_unlock(&upperdentry->d_inode->i_mutex);
+		inode_unlock(upperdentry->d_inode);
 	}
 	ovl_drop_write(dentry);
 out:
@@ -149,7 +149,6 @@ out_dput:
 	return err;
 }
 
-
 struct ovl_link_data {
 	struct dentry *realdentry;
 	void *cookie;
@@ -218,7 +217,6 @@ static int ovl_readlink(struct dentry *dentry, char __user *buf, int bufsiz)
 	return realinode->i_op->readlink(realpath.dentry, buf, bufsiz);
 }
 
-
 bool ovl_is_private_xattr(const char *name)
 {
 	return strncmp(name, OVL_XATTR_PRE_NAME, OVL_XATTR_PRE_LEN) == 0;
@@ -272,16 +270,6 @@ ssize_t ovl_getxattr(struct dentry *dentry, const char *name,
 	return vfs_getxattr(realpath.dentry, name, value, size);
 }
 
-static bool ovl_can_list(const char *s)
-{
-	/* List all non-trusted xatts */
-	if (strncmp(s, XATTR_TRUSTED_PREFIX, XATTR_TRUSTED_PREFIX_LEN) != 0)
-		return true;
-
-	/* Never list trusted.overlay, list other trusted for superuser only */
-	return !ovl_is_private_xattr(s) && capable(CAP_SYS_ADMIN);
-}
-
 ssize_t ovl_listxattr(struct dentry *dentry, char *list, size_t size)
 {
 	struct path realpath;
@@ -306,7 +294,7 @@ ssize_t ovl_listxattr(struct dentry *dentry, char *list, size_t size)
 			return -EIO;
 
 		len -= slen;
-		if (!ovl_can_list(s)) {
+		if (ovl_is_private_xattr(s)) {
 			res -= slen;
 			memmove(s, s + slen, len);
 		} else {

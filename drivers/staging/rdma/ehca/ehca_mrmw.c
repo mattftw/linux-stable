@@ -1181,7 +1181,6 @@ int ehca_reg_mr_rpages(struct ehca_shca *shca,
 			ret = 0;
 	} /* end for(i) */
 
-
 ehca_reg_mr_rpages_exit1:
 	ehca_free_fw_ctrlblock(kpage);
 ehca_reg_mr_rpages_exit0:
@@ -1921,7 +1920,7 @@ static int ehca_set_pagebuf_user2(struct ehca_mr_pginfo *pginfo,
 				  u64 *kpage)
 {
 	int ret = 0;
-	u64 pgaddr, prev_pgaddr = 0;
+	u64 pgaddr, prev_pgaddr;
 	u32 j = 0;
 	int kpages_per_hwpage = pginfo->hwpage_size / PAGE_SIZE;
 	int nr_kpages = kpages_per_hwpage;
@@ -2206,7 +2205,6 @@ void ehca_mrmw_reverse_map_acl(const u32 *hipz_acl,
 		*ib_acl |= IB_ACCESS_MW_BIND;
 } /* end ehca_mrmw_reverse_map_acl() */
 
-
 /*----------------------------------------------------------------------*/
 
 /*
@@ -2417,7 +2415,6 @@ static int ehca_reg_bmap_mr_rpages(struct ehca_shca *shca,
 		ehca_err(&shca->ib_device, "kpage alloc failed");
 		return -ENOMEM;
 	}
-	hret = H_SUCCESS;
 	for (top = 0; top < EHCA_MAP_ENTRIES; top++) {
 		if (!ehca_bmap_valid(ehca_bmap->top[top]))
 			continue;
@@ -2577,7 +2574,6 @@ static void ehca_dma_free_coherent(struct ib_device *dev, size_t size,
 	if (cpu_addr && size)
 		free_pages((unsigned long)cpu_addr, get_order(size));
 }
-
 
 struct ib_dma_mapping_ops ehca_dma_mapping_ops = {
 	.mapping_error          = ehca_dma_mapping_error,

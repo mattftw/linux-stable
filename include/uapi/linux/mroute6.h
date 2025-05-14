@@ -3,7 +3,6 @@
 
 #include <linux/types.h>
 #include <linux/sockios.h>
-#include <linux/in6.h>		/* For struct sockaddr_in6. */
 
 /*
  *	Based on the MROUTING 3.5 defines primarily to keep
@@ -116,8 +115,6 @@ struct sioc_mif_req6 {
 /*
  *	That's all usermode folks
  */
-
-
 
 /*
  * Structure used to communicate from kernel to multicast router.

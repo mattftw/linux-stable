@@ -98,7 +98,6 @@ struct mei_nfc_if_version {
 	u8 radio_type;
 } __packed;
 
-
 #define MEI_NFC_CMD_MAINTENANCE 0x00
 #define MEI_NFC_SUBCMD_IF_VERSION 0x01
 
@@ -151,7 +150,7 @@ static int mei_nfc_if_version(struct mei_cl *cl,
 
 	ret = 0;
 	bytes_recv = __mei_cl_recv(cl, (u8 *)reply, if_version_length);
-	if (bytes_recv < 0 || bytes_recv < if_version_length) {
+	if (bytes_recv < if_version_length) {
 		dev_err(bus->dev, "Could not read IF version\n");
 		ret = -EIO;
 		goto err;
@@ -303,4 +302,3 @@ void mei_cl_bus_dev_fixup(struct mei_cl_device *cldev)
 			f->hook(cldev);
 	}
 }
-

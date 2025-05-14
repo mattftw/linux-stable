@@ -48,6 +48,7 @@ unsigned char f2fs_filetype_table[F2FS_FT_MAX] = {
 	[F2FS_FT_SYMLINK]	= DT_LNK,
 };
 
+#define S_SHIFT 12
 static unsigned char f2fs_type_by_mode[S_IFMT >> S_SHIFT] = {
 	[S_IFREG >> S_SHIFT]	= F2FS_FT_REG_FILE,
 	[S_IFDIR >> S_SHIFT]	= F2FS_FT_DIR,
@@ -61,13 +62,6 @@ static unsigned char f2fs_type_by_mode[S_IFMT >> S_SHIFT] = {
 void set_de_type(struct f2fs_dir_entry *de, umode_t mode)
 {
 	de->file_type = f2fs_type_by_mode[(mode & S_IFMT) >> S_SHIFT];
-}
-
-unsigned char get_de_type(struct f2fs_dir_entry *de)
-{
-	if (de->file_type < F2FS_FT_MAX)
-		return f2fs_filetype_table[de->file_type];
-	return DT_UNKNOWN;
 }
 
 static unsigned long dir_block_index(unsigned int level,
@@ -130,29 +124,19 @@ struct f2fs_dir_entry *find_target_dentry(struct f2fs_filename *fname,
 
 		de = &d->dentry[bit_pos];
 
-		if (de->hash_code != namehash)
-			goto not_match;
-
+		/* encrypted case */
 		de_name.name = d->filename[bit_pos];
 		de_name.len = le16_to_cpu(de->name_len);
 
-#ifdef CONFIG_F2FS_FS_ENCRYPTION
-		if (unlikely(!name->name)) {
-			if (fname->usr_fname->name[0] == '_') {
-				if (de_name.len > 32 &&
-					!memcmp(de_name.name + ((de_name.len - 17) & ~15),
-						fname->crypto_buf.name + 8, 16))
-					goto found;
-				goto not_match;
-			}
-			name->name = fname->crypto_buf.name;
-			name->len = fname->crypto_buf.len;
-		}
-#endif
-		if (de_name.len == name->len &&
-				!memcmp(de_name.name, name->name, name->len))
+		/* show encrypted name */
+		if (fname->hash) {
+			if (de->hash_code == fname->hash)
+				goto found;
+		} else if (de_name.len == name->len &&
+			de->hash_code == namehash &&
+			!memcmp(de_name.name, name->name, name->len))
 			goto found;
-not_match:
+
 		if (max_slots && max_len > *max_slots)
 			*max_slots = max_len;
 		max_len = 0;
@@ -186,7 +170,7 @@ static struct f2fs_dir_entry *find_in_level(struct inode *dir,
 	int max_slots;
 	f2fs_hash_t namehash;
 
-	namehash = f2fs_dentry_hash(&name, fname);
+	namehash = f2fs_dentry_hash(&name);
 
 	f2fs_bug_on(F2FS_I_SB(dir), level > MAX_DIR_HASH_DEPTH);
 
@@ -522,10 +506,18 @@ void f2fs_update_dentry(nid_t ino, umode_t mode, struct f2fs_dentry_ptr *d,
 	de->ino = cpu_to_le32(ino);
 	set_de_type(de, mode);
 	for (i = 0; i < slots; i++)
+#if defined(CONFIG_SYNO_LSP_RTD1619)
+		__set_bit_le(bit_pos + i, (void *)d->bitmap);
+#else /* CONFIG_SYNO_LSP_RTD1619 */
 		test_and_set_bit_le(bit_pos + i, (void *)d->bitmap);
+#endif /* CONFIG_SYNO_LSP_RTD1619 */
 }
 
-int f2fs_add_regular_entry(struct inode *dir, const struct qstr *new_name,
+/*
+ * Caller should grab and release a rwsem by calling f2fs_lock_op() and
+ * f2fs_unlock_op().
+ */
+int __f2fs_add_link(struct inode *dir, const struct qstr *name,
 				struct inode *inode, nid_t ino, umode_t mode)
 {
 	unsigned int bit_pos;
@@ -538,11 +530,28 @@ int f2fs_add_regular_entry(struct inode *dir, const struct qstr *new_name,
 	struct f2fs_dentry_block *dentry_blk = NULL;
 	struct f2fs_dentry_ptr d;
 	struct page *page = NULL;
-	int slots, err = 0;
+	struct f2fs_filename fname;
+	struct qstr new_name;
+	int slots, err;
+
+	err = f2fs_fname_setup_filename(dir, name, 0, &fname);
+	if (err)
+		return err;
+
+	new_name.name = fname_name(&fname);
+	new_name.len = fname_len(&fname);
+
+	if (f2fs_has_inline_dentry(dir)) {
+		err = f2fs_add_inline_entry(dir, &new_name, inode, ino, mode);
+		if (!err || err != -EAGAIN)
+			goto out;
+		else
+			err = 0;
+	}
 
 	level = 0;
-	slots = GET_DENTRY_SLOTS(new_name->len);
-	dentry_hash = f2fs_dentry_hash(new_name, NULL);
+	slots = GET_DENTRY_SLOTS(new_name.len);
+	dentry_hash = f2fs_dentry_hash(&new_name);
 
 	current_depth = F2FS_I(dir)->i_current_depth;
 	if (F2FS_I(dir)->chash == dentry_hash) {
@@ -551,8 +560,10 @@ int f2fs_add_regular_entry(struct inode *dir, const struct qstr *new_name,
 	}
 
 start:
-	if (unlikely(current_depth == MAX_DIR_HASH_DEPTH))
-		return -ENOSPC;
+	if (unlikely(current_depth == MAX_DIR_HASH_DEPTH)) {
+		err = -ENOSPC;
+		goto out;
+	}
 
 	/* Increase the depth, if required */
 	if (level == current_depth)
@@ -566,8 +577,10 @@ start:
 
 	for (block = bidx; block <= (bidx + nblock - 1); block++) {
 		dentry_page = get_new_data_page(dir, NULL, block, true);
-		if (IS_ERR(dentry_page))
-			return PTR_ERR(dentry_page);
+		if (IS_ERR(dentry_page)) {
+			err = PTR_ERR(dentry_page);
+			goto out;
+		}
 
 		dentry_blk = kmap(dentry_page);
 		bit_pos = room_for_filename(&dentry_blk->dentry_bitmap,
@@ -587,7 +600,7 @@ add_dentry:
 
 	if (inode) {
 		down_write(&F2FS_I(inode)->i_sem);
-		page = init_inode_metadata(inode, dir, new_name, NULL);
+		page = init_inode_metadata(inode, dir, &new_name, NULL);
 		if (IS_ERR(page)) {
 			err = PTR_ERR(page);
 			goto fail;
@@ -597,7 +610,7 @@ add_dentry:
 	}
 
 	make_dentry_ptr(NULL, &d, (void *)dentry_blk, 1);
-	f2fs_update_dentry(ino, mode, &d, new_name, dentry_hash, bit_pos);
+	f2fs_update_dentry(ino, mode, &d, &new_name, dentry_hash, bit_pos);
 
 	set_page_dirty(dentry_page);
 
@@ -619,34 +632,7 @@ fail:
 	}
 	kunmap(dentry_page);
 	f2fs_put_page(dentry_page, 1);
-
-	return err;
-}
-
-/*
- * Caller should grab and release a rwsem by calling f2fs_lock_op() and
- * f2fs_unlock_op().
- */
-int __f2fs_add_link(struct inode *dir, const struct qstr *name,
-				struct inode *inode, nid_t ino, umode_t mode)
-{
-	struct f2fs_filename fname;
-	struct qstr new_name;
-	int err;
-
-	err = f2fs_fname_setup_filename(dir, name, 0, &fname);
-	if (err)
-		return err;
-
-	new_name.name = fname_name(&fname);
-	new_name.len = fname_len(&fname);
-
-	err = -EAGAIN;
-	if (f2fs_has_inline_dentry(dir))
-		err = f2fs_add_inline_entry(dir, &new_name, inode, ino, mode);
-	if (err == -EAGAIN)
-		err = f2fs_add_regular_entry(dir, &new_name, inode, ino, mode);
-
+out:
 	f2fs_fname_free_filename(&fname);
 	return err;
 }
@@ -800,7 +786,10 @@ bool f2fs_fill_dentries(struct dir_context *ctx, struct f2fs_dentry_ptr *d,
 			break;
 
 		de = &d->dentry[bit_pos];
-		d_type = get_de_type(de);
+		if (de->file_type < F2FS_FT_MAX)
+			d_type = f2fs_filetype_table[de->file_type];
+		else
+			d_type = DT_UNKNOWN;
 
 		de_name.name = d->filename[bit_pos];
 		de_name.len = le16_to_cpu(de->name_len);

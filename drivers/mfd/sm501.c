@@ -72,7 +72,6 @@ struct sm501_devdata {
 	struct resource			*regs_claim;
 	struct sm501_platdata		*platdata;
 
-
 	unsigned int			 in_suspend;
 	unsigned long			 pm_misc;
 
@@ -82,7 +81,6 @@ struct sm501_devdata {
 	void __iomem			*regs;
 	unsigned int			 rev;
 };
-
 
 #define MHZ (1000 * 1000)
 
@@ -714,7 +712,6 @@ sm501_create_subdev(struct sm501_devdata *sm, char *name,
 	smdev->pdev.name = name;
 	smdev->pdev.id = sm->pdev_id;
 	smdev->pdev.dev.parent = sm->dev;
-	smdev->pdev.dev.coherent_dma_mask = 0xffffffff;
 
 	if (res_count) {
 		smdev->pdev.resource = (struct resource *)(smdev+1);
@@ -1220,7 +1217,6 @@ static ssize_t sm501_dbg_regs(struct device *dev,
 
 	return ptr - buff;
 }
-
 
 static DEVICE_ATTR(dbg_regs, 0444, sm501_dbg_regs, NULL);
 

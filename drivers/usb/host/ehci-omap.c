@@ -130,8 +130,8 @@ static int ehci_hcd_omap_probe(struct platform_device *pdev)
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0) {
-		dev_err(dev, "EHCI irq failed: %d\n", irq);
-		return irq;
+		dev_err(dev, "EHCI irq failed\n");
+		return -ENODEV;
 	}
 
 	res =  platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -248,7 +248,6 @@ err_phy:
 
 	return ret;
 }
-
 
 /**
  * ehci_hcd_omap_remove - shutdown processing for EHCI HCDs

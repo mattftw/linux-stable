@@ -42,7 +42,8 @@
 #include <linux/kref.h>
 #include <linux/rcupdate.h>
 #include <linux/dma-buf.h>
-#include <ttm/ttm_memory.h>
+
+#include "ttm_memory.h"
 
 /**
  * enum ttm_ref_type
@@ -133,7 +134,6 @@ struct ttm_base_object {
 	void (*ref_obj_release) (struct ttm_base_object *base,
 				 enum ttm_ref_type ref_type);
 };
-
 
 /**
  * struct ttm_prime_object - Modified base object that is prime-aware

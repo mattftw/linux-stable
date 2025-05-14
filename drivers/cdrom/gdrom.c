@@ -221,7 +221,6 @@ static void gdrom_spicommand(void *spi_string, int buflen)
 	outsw(GDROM_DATA_REG, cmd, 6);
 }
 
-
 /* gdrom_command_executediagnostic:
  * Used to probe for presence of working GDROM
  * Restarts GDROM device and then applies standard ATA 3
@@ -497,9 +496,6 @@ static struct cdrom_device_ops gdrom_ops = {
 static int gdrom_bdops_open(struct block_device *bdev, fmode_t mode)
 {
 	int ret;
-
-	check_disk_change(bdev);
-
 	mutex_lock(&gdrom_mutex);
 	ret = cdrom_open(gd.cd_info, bdev, mode);
 	mutex_unlock(&gdrom_mutex);
@@ -882,7 +878,6 @@ static void __exit exit_gdrom(void)
 	platform_device_unregister(pd);
 	platform_driver_unregister(&gdrom_driver);
 	kfree(gd.toc);
-	kfree(gd.cd_info);
 }
 
 module_init(init_gdrom);

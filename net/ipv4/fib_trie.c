@@ -1806,7 +1806,7 @@ void fib_table_flush_external(struct fib_table *tb)
 }
 
 /* Caller must hold RTNL. */
-int fib_table_flush(struct fib_table *tb, bool flush_all)
+int fib_table_flush(struct fib_table *tb)
 {
 	struct trie *t = (struct trie *)tb->tb_data;
 	struct key_vector *pn = t->kv;
@@ -1850,17 +1850,7 @@ int fib_table_flush(struct fib_table *tb, bool flush_all)
 		hlist_for_each_entry_safe(fa, tmp, &n->leaf, fa_list) {
 			struct fib_info *fi = fa->fa_info;
 
-			if (!fi ||
-			    (!(fi->fib_flags & RTNH_F_DEAD) &&
-			     !fib_props[fa->fa_type].error)) {
-				slen = fa->fa_slen;
-				continue;
-			}
-
-			/* Do not flush error routes if network namespace is
-			 * not being dismantled
-			 */
-			if (!flush_all && fib_props[fa->fa_type].error) {
+			if (!fi || !(fi->fib_flags & RTNH_F_DEAD)) {
 				slen = fa->fa_slen;
 				continue;
 			}
@@ -1916,8 +1906,6 @@ static int fn_trie_dump_leaf(struct key_vector *l, struct fib_table *tb,
 
 	/* rcu_read_lock is hold by caller */
 	hlist_for_each_entry_rcu(fa, &l->leaf, fa_list) {
-		int err;
-
 		if (i < s_i) {
 			i++;
 			continue;
@@ -1928,14 +1916,17 @@ static int fn_trie_dump_leaf(struct key_vector *l, struct fib_table *tb,
 			continue;
 		}
 
-		err = fib_dump_info(skb, NETLINK_CB(cb->skb).portid,
-				    cb->nlh->nlmsg_seq, RTM_NEWROUTE,
-				    tb->tb_id, fa->fa_type,
-				    xkey, KEYLENGTH - fa->fa_slen,
-				    fa->fa_tos, fa->fa_info, NLM_F_MULTI);
-		if (err < 0) {
+		if (fib_dump_info(skb, NETLINK_CB(cb->skb).portid,
+				  cb->nlh->nlmsg_seq,
+				  RTM_NEWROUTE,
+				  tb->tb_id,
+				  fa->fa_type,
+				  xkey,
+				  KEYLENGTH - fa->fa_slen,
+				  fa->fa_tos,
+				  fa->fa_info, NLM_F_MULTI) < 0) {
 			cb->args[4] = i;
-			return err;
+			return -1;
 		}
 		i++;
 	}
@@ -1957,13 +1948,10 @@ int fib_table_dump(struct fib_table *tb, struct sk_buff *skb,
 	t_key key = cb->args[3];
 
 	while ((l = leaf_walk_rcu(&tp, key)) != NULL) {
-		int err;
-
-		err = fn_trie_dump_leaf(l, tb, skb, cb);
-		if (err < 0) {
+		if (fn_trie_dump_leaf(l, tb, skb, cb) < 0) {
 			cb->args[3] = key;
 			cb->args[2] = count;
-			return err;
+			return -1;
 		}
 
 		++count;
@@ -2218,7 +2206,6 @@ static void fib_table_print(struct seq_file *seq, struct fib_table *tb)
 	else
 		seq_printf(seq, "Id %d:\n", tb->tb_id);
 }
-
 
 static int fib_triestat_seq_show(struct seq_file *seq, void *v)
 {

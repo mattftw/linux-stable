@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * DaVinci Ethernet Medium Access Controller
  *
@@ -308,7 +311,6 @@ static const char emac_version_string[] = "TI DaVinci EMAC Linux v6.1";
 #define EMAC_DM646X_CMINTMAX_INTVL	(1000 / EMAC_DM646X_CMINTMIN_CNT)
 #define EMAC_DM646X_CMINTMIN_INTVL	((1000 / EMAC_DM646X_CMINTMAX_CNT) + 1)
 
-
 /* EMAC EOI codes for C0 */
 #define EMAC_DM646X_MAC_EOI_C0_RXEN	(0x01)
 #define EMAC_DM646X_MAC_EOI_C0_TXEN	(0x02)
@@ -617,7 +619,6 @@ static int emac_set_coalesce(struct net_device *ndev,
 	return 0;
 
 }
-
 
 /* ethtool_ops: DaVinci EMAC Ethtool structure
  *
@@ -1517,10 +1518,6 @@ static int emac_devioctl(struct net_device *ndev, struct ifreq *ifrq, int cmd)
 
 static int match_first_device(struct device *dev, void *data)
 {
-	if (dev->parent && dev->parent->of_node)
-		return of_device_is_compatible(dev->parent->of_node,
-					       "ti,davinci_mdio");
-
 	return !strncmp(dev_name(dev), "davinci_mdio", 12);
 }
 
@@ -1648,10 +1645,14 @@ static int emac_dev_open(struct net_device *ndev)
 		priv->speed = 0;
 		priv->duplex = ~0;
 
+#if defined(MY_DEF_HERE)
+		phy_attached_info(priv->phydev);
+#else /* MY_DEF_HERE */
 		dev_info(emac_dev, "attached PHY driver [%s] "
 			"(mii_bus:phy_addr=%s, id=%x)\n",
 			priv->phydev->drv->name, dev_name(&priv->phydev->dev),
 			priv->phydev->phy_id);
+#endif /* MY_DEF_HERE */
 	}
 
 	if (!priv->phydev) {
@@ -1919,7 +1920,6 @@ static int davinci_emac_probe(struct platform_device *pdev)
 	struct clk *emac_clk;
 	unsigned long emac_bus_frequency;
 
-
 	/* obtain emac clock from kernel */
 	emac_clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(emac_clk)) {
@@ -2066,7 +2066,6 @@ static int davinci_emac_probe(struct platform_device *pdev)
 		goto no_cpdma_chan;
 	}
 
-
 	if (netif_msg_probe(priv)) {
 		dev_notice(&pdev->dev, "DaVinci EMAC Probe found device "
 			   "(regs: %p, irq: %d)\n",
@@ -2108,7 +2107,6 @@ static int davinci_emac_remove(struct platform_device *pdev)
 	cpdma_ctlr_destroy(priv->dma);
 
 	unregister_netdev(ndev);
-	of_node_put(priv->phy_node);
 	free_netdev(ndev);
 
 	return 0;

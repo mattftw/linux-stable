@@ -101,8 +101,6 @@ struct hv_fc_wwn_packet {
 	u8	secondary_node_wwn[8];
 };
 
-
-
 /*
  * SRB Flag Bits
  */
@@ -207,7 +205,6 @@ struct vmscsi_request {
 
 } __attribute((packed));
 
-
 /*
  * The size of the vmscsi_request has changed in win8. The
  * additional size is because of new elements added to the
@@ -227,7 +224,6 @@ struct vmstor_protocol {
 	int sense_buffer_size;
 	int vmscsi_size_delta;
 };
-
 
 static const struct vmstor_protocol vmstor_protocols[] = {
 	{
@@ -256,7 +252,6 @@ static const struct vmstor_protocol vmstor_protocols[] = {
 		sizeof(struct vmscsi_win8_extension),
 	}
 };
-
 
 /*
  * This structure is sent during the intialization phase to get the different
@@ -379,6 +374,7 @@ MODULE_PARM_DESC(vcpus_per_sub_channel, "Ratio of VCPUs to subchannels");
  */
 static int storvsc_timeout = 180;
 
+static int msft_blist_flags = BLIST_TRY_VPD_PAGES;
 
 static void storvsc_on_channel_callback(void *context);
 
@@ -408,7 +404,6 @@ struct storvsc_cmd_request {
 
 	struct vstor_packet vstor_packet;
 };
-
 
 /* A storvsc device is a device object that contains a vmbus channel */
 struct storvsc_device {
@@ -525,7 +520,6 @@ done:
 	kfree(wrk);
 }
 
-
 /*
  * We can get incoming messages from the host that are not in response to
  * messages that we have sent out. An example of this would be messages
@@ -553,7 +547,6 @@ static inline struct storvsc_device *get_out_stor_device(
 
 	return stor_device;
 }
-
 
 static inline void storvsc_wait_to_drain(struct storvsc_device *dev)
 {
@@ -613,22 +606,13 @@ static void handle_sc_creation(struct vmbus_channel *new_sc)
 static void  handle_multichannel_storage(struct hv_device *device, int max_chns)
 {
 	struct storvsc_device *stor_device;
+	int num_cpus = num_online_cpus();
 	int num_sc;
 	struct storvsc_cmd_request *request;
 	struct vstor_packet *vstor_packet;
 	int ret, t;
 
-	/*
-	 * If the number of CPUs is artificially restricted, such as
-	 * with maxcpus=1 on the kernel boot line, Hyper-V could offer
-	 * sub-channels >= the number of CPUs. These sub-channels
-	 * should not be created. The primary channel is already created
-	 * and assigned to one CPU, so check against # CPUs - 1.
-	 */
-	num_sc = min((int)(num_online_cpus() - 1), max_chns);
-	if (!num_sc)
-		return;
-
+	num_sc = ((max_chns > num_cpus) ? num_cpus : max_chns);
 	stor_device = get_out_stor_device(device);
 	if (!stor_device)
 		return;
@@ -732,7 +716,6 @@ static int storvsc_channel_init(struct hv_device *device)
 		goto cleanup;
 	}
 
-
 	for (i = 0; i < ARRAY_SIZE(vmstor_protocols); i++) {
 		/* reuse the packet for version range supported */
 		memset(vstor_packet, 0, sizeof(struct vstor_packet));
@@ -786,7 +769,6 @@ static int storvsc_channel_init(struct hv_device *device)
 		ret = -EINVAL;
 		goto cleanup;
 	}
-
 
 	memset(vstor_packet, 0, sizeof(struct vstor_packet));
 	vstor_packet->operation = VSTOR_OPERATION_QUERY_PROPERTIES;
@@ -857,7 +839,6 @@ static int storvsc_channel_init(struct hv_device *device)
 	if (process_sub_channels)
 		handle_multichannel_storage(device, max_chns);
 
-
 cleanup:
 	return ret;
 }
@@ -899,11 +880,10 @@ static void storvsc_handle_error(struct vmscsi_request *vm_srb,
 		case TEST_UNIT_READY:
 			break;
 		default:
-			set_host_byte(scmnd, DID_ERROR);
+			set_host_byte(scmnd, DID_TARGET_FAILURE);
 		}
 		break;
 	case SRB_STATUS_INVALID_LUN:
-		set_host_byte(scmnd, DID_NO_CONNECT);
 		do_work = true;
 		process_err_fn = storvsc_remove_lun;
 		break;
@@ -937,7 +917,6 @@ static void storvsc_handle_error(struct vmscsi_request *vm_srb,
 	INIT_WORK(&wrk->work, process_err_fn);
 	schedule_work(&wrk->work);
 }
-
 
 static void storvsc_command_completion(struct storvsc_cmd_request *cmd_request)
 {
@@ -1016,13 +995,11 @@ static void storvsc_on_io_completion(struct hv_device *device,
 		vstor_packet->vm_srb.srb_status = SRB_STATUS_SUCCESS;
 	}
 
-
 	/* Copy over the status...etc */
 	stor_pkt->vm_srb.scsi_status = vstor_packet->vm_srb.scsi_status;
 	stor_pkt->vm_srb.srb_status = vstor_packet->vm_srb.srb_status;
 	stor_pkt->vm_srb.sense_info_length =
 	vstor_packet->vm_srb.sense_info_length;
-
 
 	if ((vstor_packet->vm_srb.scsi_status & 0xFF) == 0x02) {
 		/* CHECK_CONDITION */
@@ -1045,7 +1022,6 @@ static void storvsc_on_io_completion(struct hv_device *device,
 	if (atomic_dec_and_test(&stor_device->num_outstanding_req) &&
 		stor_device->drain_notify)
 		wake_up(&stor_device->waiting_to_drain);
-
 
 }
 
@@ -1201,7 +1177,6 @@ static int storvsc_do_io(struct hv_device *device,
 	if (!stor_device)
 		return -ENODEV;
 
-
 	request->device  = device;
 	/*
 	 * Select an an appropriate channel to send the request out.
@@ -1209,15 +1184,12 @@ static int storvsc_do_io(struct hv_device *device,
 
 	outgoing_channel = vmbus_get_outgoing_channel(device->channel);
 
-
 	vstor_packet->flags |= REQUEST_COMPLETION_FLAG;
 
 	vstor_packet->vm_srb.length = (sizeof(struct vmscsi_request) -
 					vmscsi_size_delta);
 
-
 	vstor_packet->vm_srb.sense_info_length = sense_buffer_size;
-
 
 	vstor_packet->vm_srb.data_transfer_length =
 	request->payload->range.len;
@@ -1249,22 +1221,6 @@ static int storvsc_do_io(struct hv_device *device,
 	return ret;
 }
 
-static int storvsc_device_alloc(struct scsi_device *sdevice)
-{
-	/*
-	 * Set blist flag to permit the reading of the VPD pages even when
-	 * the target may claim SPC-2 compliance. MSFT targets currently
-	 * claim SPC-2 compliance while they implement post SPC-2 features.
-	 * With this flag we can correctly handle WRITE_SAME_16 issues.
-	 *
-	 * Hypervisor reports SCSI_UNKNOWN type for DVD ROM device but
-	 * still supports REPORT LUN.
-	 */
-	sdevice->sdev_bflags = BLIST_REPORTLUN2 | BLIST_TRY_VPD_PAGES;
-
-	return 0;
-}
-
 static int storvsc_device_configure(struct scsi_device *sdevice)
 {
 
@@ -1278,6 +1234,14 @@ static int storvsc_device_configure(struct scsi_device *sdevice)
 	blk_queue_virt_boundary(sdevice->request_queue, PAGE_SIZE - 1);
 
 	sdevice->no_write_same = 1;
+
+	/*
+	 * Add blist flags to permit the reading of the VPD pages even when
+	 * the target may claim SPC-2 compliance. MSFT targets currently
+	 * claim SPC-2 compliance while they implement post SPC-2 features.
+	 * With this patch we can correctly handle WRITE_SAME_16 issues.
+	 */
+	sdevice->sdev_bflags |= msft_blist_flags;
 
 	/*
 	 * If the host is WIN8 or WIN8 R2, claim conformance to SPC-3
@@ -1332,7 +1296,6 @@ static int storvsc_host_reset_handler(struct scsi_cmnd *scmnd)
 	struct vstor_packet *vstor_packet;
 	int ret, t;
 
-
 	stor_device = get_out_stor_device(device);
 	if (!stor_device)
 		return FAILED;
@@ -1358,7 +1321,6 @@ static int storvsc_host_reset_handler(struct scsi_cmnd *scmnd)
 	t = wait_for_completion_timeout(&request->wait_event, 5*HZ);
 	if (t == 0)
 		return TIMEOUT_ERROR;
-
 
 	/*
 	 * At this point, all outstanding requests in the adapter
@@ -1475,7 +1437,6 @@ static int storvsc_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *scmnd)
 		return -EINVAL;
 	}
 
-
 	vm_srb->port_number = host_dev->port;
 	vm_srb->path_id = scmnd->device->channel;
 	vm_srb->target_id = scmnd->device->id;
@@ -1527,8 +1488,6 @@ static int storvsc_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *scmnd)
 	ret = storvsc_do_io(dev, cmd_request);
 
 	if (ret == -EAGAIN) {
-		if (payload_sz > sizeof(cmd_request->mpb))
-			kfree(payload);
 		/* no more space */
 		return SCSI_MLQUEUE_DEVICE_BUSY;
 	}
@@ -1545,9 +1504,8 @@ static struct scsi_host_template scsi_driver = {
 	.eh_host_reset_handler =	storvsc_host_reset_handler,
 	.proc_name =		"storvsc_host",
 	.eh_timed_out =		storvsc_eh_timed_out,
-	.slave_alloc =		storvsc_device_alloc,
 	.slave_configure =	storvsc_device_configure,
-	.cmd_per_lun =		2048,
+	.cmd_per_lun =		255,
 	.this_id =		-1,
 	.use_clustering =	ENABLE_CLUSTERING,
 	/* Make sure we dont get a sg segment crosses a page boundary */
@@ -1629,7 +1587,6 @@ static int storvsc_probe(struct hv_device *device,
 
 	host_dev->port = host->host_no;
 	host_dev->dev = device;
-
 
 	stor_device = kzalloc(sizeof(struct storvsc_device), GFP_KERNEL);
 	if (!stor_device) {

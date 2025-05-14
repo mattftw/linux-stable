@@ -53,7 +53,7 @@ static void l2tp_dfs_next_tunnel(struct l2tp_dfs_seq_data *pd)
 
 static void l2tp_dfs_next_session(struct l2tp_dfs_seq_data *pd)
 {
-	pd->session = l2tp_session_get_nth(pd->tunnel, pd->session_idx, true);
+	pd->session = l2tp_session_find_nth(pd->tunnel, pd->session_idx);
 	pd->session_idx++;
 
 	if (pd->session == NULL) {
@@ -86,7 +86,6 @@ static void *l2tp_dfs_seq_start(struct seq_file *m, loff_t *offs)
 out:
 	return pd;
 }
-
 
 static void *l2tp_dfs_seq_next(struct seq_file *m, void *v, loff_t *pos)
 {
@@ -238,14 +237,10 @@ static int l2tp_dfs_seq_show(struct seq_file *m, void *v)
 	}
 
 	/* Show the tunnel or session context */
-	if (!pd->session) {
+	if (pd->session == NULL)
 		l2tp_dfs_seq_tunnel_show(m, pd->tunnel);
-	} else {
+	else
 		l2tp_dfs_seq_session_show(m, pd->session);
-		if (pd->session->deref)
-			pd->session->deref(pd->session);
-		l2tp_session_dec_refcount(pd->session);
-	}
 
 out:
 	return 0;

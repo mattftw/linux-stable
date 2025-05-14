@@ -52,7 +52,6 @@ struct sd {
 	u8 snapshot_pressed;
 };
 
-
 /* .priv is what goes to register 8 for this mode, known working values:
    0x00 -> 176x144, cropped
    0x01 -> 176x144, cropped
@@ -187,9 +186,6 @@ static int sd_start(struct gspca_dev *gspca_dev)
 		pr_err("Couldn't get altsetting\n");
 		return -EIO;
 	}
-
-	if (alt->desc.bNumEndpoints < 2)
-		return -ENODEV;
 
 	packet_size = le16_to_cpu(alt->endpoint[0].desc.wMaxPacketSize);
 

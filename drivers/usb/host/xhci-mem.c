@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * xHCI host controller driver
  *
@@ -567,7 +570,6 @@ struct xhci_ep_ctx *xhci_get_ep_ctx(struct xhci_hcd *xhci,
 		(ctx->bytes + (ep_index * CTX_SIZE(xhci->hcc_params)));
 }
 
-
 /***************** Streams structures manipulation *************************/
 
 static void xhci_free_stream_ctx(struct xhci_hcd *xhci,
@@ -638,7 +640,7 @@ struct xhci_ring *xhci_stream_id_to_ring(
 	if (!ep->stream_info)
 		return NULL;
 
-	if (stream_id >= ep->stream_info->num_streams)
+	if (stream_id > ep->stream_info->num_streams)
 		return NULL;
 	return ep->stream_info->stream_rings[stream_id];
 }
@@ -826,7 +828,6 @@ void xhci_free_stream_info(struct xhci_hcd *xhci,
 	kfree(stream_info);
 }
 
-
 /***************** Device context manipulation *************************/
 
 static void xhci_init_endpoint_timer(struct xhci_hcd *xhci,
@@ -904,7 +905,6 @@ free_tts:
 	return -ENOMEM;
 }
 
-
 /* All the xhci_tds in the ring's TD list should be freed at this point.
  * Should be called with xhci->lock held if there is any chance the TT lists
  * will be manipulated by the configure endpoint, allocate device, or update
@@ -960,8 +960,6 @@ void xhci_free_virt_device(struct xhci_hcd *xhci, int slot_id)
 	if (dev->out_ctx)
 		xhci_free_container_ctx(xhci, dev->out_ctx);
 
-	if (dev->udev && dev->udev->slot_id)
-		dev->udev->slot_id = 0;
 	kfree(xhci->devs[slot_id]);
 	xhci->devs[slot_id] = NULL;
 }
@@ -983,12 +981,6 @@ void xhci_free_virt_devices_depth_first(struct xhci_hcd *xhci, int slot_id)
 	if (!vdev)
 		return;
 
-	if (vdev->real_port == 0 ||
-			vdev->real_port > HCS_MAX_PORTS(xhci->hcs_params1)) {
-		xhci_dbg(xhci, "Bad vdev->real_port.\n");
-		goto out;
-	}
-
 	tt_list_head = &(xhci->rh_bw[vdev->real_port - 1].tts);
 	list_for_each_entry_safe(tt_info, next, tt_list_head, tt_list) {
 		/* is this a hub device that added a tt_info to the tts list */
@@ -1002,7 +994,6 @@ void xhci_free_virt_devices_depth_first(struct xhci_hcd *xhci, int slot_id)
 			}
 		}
 	}
-out:
 	/* we are now at a leaf device */
 	xhci_free_virt_device(xhci, slot_id);
 }
@@ -1019,9 +1010,10 @@ int xhci_alloc_virt_device(struct xhci_hcd *xhci, int slot_id,
 		return 0;
 	}
 
-	dev = kzalloc(sizeof(*dev), flags);
-	if (!dev)
+	xhci->devs[slot_id] = kzalloc(sizeof(*xhci->devs[slot_id]), flags);
+	if (!xhci->devs[slot_id])
 		return 0;
+	dev = xhci->devs[slot_id];
 
 	/* Allocate the (output) device context that will be used in the HC. */
 	dev->out_ctx = xhci_alloc_container_ctx(xhci, XHCI_CTX_TYPE_DEVICE, flags);
@@ -1069,18 +1061,9 @@ int xhci_alloc_virt_device(struct xhci_hcd *xhci, int slot_id,
 		 &xhci->dcbaa->dev_context_ptrs[slot_id],
 		 le64_to_cpu(xhci->dcbaa->dev_context_ptrs[slot_id]));
 
-	xhci->devs[slot_id] = dev;
-
 	return 1;
 fail:
-	if (dev->eps[0].ring)
-		xhci_ring_free(xhci, dev->eps[0].ring);
-	if (dev->in_ctx)
-		xhci_free_container_ctx(xhci, dev->in_ctx);
-	if (dev->out_ctx)
-		xhci_free_container_ctx(xhci, dev->out_ctx);
-	kfree(dev);
-
+	xhci_free_virt_device(xhci, slot_id);
 	return 0;
 }
 
@@ -1094,6 +1077,73 @@ void xhci_copy_ep0_dequeue_into_input_ctx(struct xhci_hcd *xhci,
 	virt_dev = xhci->devs[udev->slot_id];
 	ep0_ctx = xhci_get_ep_ctx(xhci, virt_dev->in_ctx, 0);
 	ep_ring = virt_dev->eps[0].ring;
+#if defined(CONFIG_SYNO_LSP_RTD1619)
+
+#ifdef CONFIG_USB_PATCH_ON_RTK
+#if 1
+	/* [DEV_FIX]xhci control tranfer will error occasionally (1/45)
+	 * commit 0d2ae2abc867c1a31b7d280dc6429d18ba3770c5
+	 */
+	{
+		int i = 0;
+		struct xhci_ring *ring = ep_ring;
+		union xhci_trb *next;
+		union xhci_trb *trb;
+
+		ring->enq_seg = ring->first_seg;
+		ring->enqueue = ring->first_seg->trbs;
+		next = ring->enqueue;
+		wmb();
+		for (i = 0; i < (TRBS_PER_SEGMENT); i++) {
+			trb = &ring->first_seg->trbs[i];
+			trb->generic.field[3] &= cpu_to_le32(~TRB_CYCLE);
+		}
+		for (i = 0; i < (TRBS_PER_SEGMENT); i++) {
+			trb = &ring->first_seg->next->trbs[i];
+			trb->generic.field[3] &= cpu_to_le32(~TRB_CYCLE);
+		}
+		ring->cycle_state = 1;
+		wmb();
+	}
+#else
+	/* [DEV_FIx]set address fail after warm/hot reset
+	 * commit e7afd2f2d0093553379a9e2d6874ef11897a394f
+	 */
+	/* Fixed : USB reset issue, which will cause set address fail.
+	 * by Ted.
+	 */
+	{
+		int i = 0;
+		struct xhci_ring *ring = ep_ring;
+		union xhci_trb *next;
+		union xhci_trb *trb;
+		ring->enq_seg = ring->first_seg;
+		ring->enqueue = ring->first_seg->trbs;
+		next = ring->enqueue;
+		wmb();
+		for (i = 0; i < (TRBS_PER_SEGMENT -1); ++i) {
+			trb = &ring->first_seg->trbs[i];
+			trb->generic.field[0] = 0x0;
+			trb->generic.field[1] = 0x0;
+			trb->generic.field[2] = 0x0;
+			trb->generic.field[3] = 0x0;
+		}
+		wmb();
+
+		for (i = 0; i < (TRBS_PER_SEGMENT -1); ++i) {
+			trb = &ring->first_seg->next->trbs[i];
+			trb->generic.field[0] = 0x0;
+			trb->generic.field[1] = 0x0;
+			trb->generic.field[2] = 0x0;
+			trb->generic.field[3] = 0x0;
+		}
+		ring->cycle_state = 1;
+		wmb();
+	}
+#endif
+#endif
+
+#endif /* CONFIG_SYNO_LSP_RTD1619 */
 	/*
 	 * FIXME we don't keep track of the dequeue pointer very well after a
 	 * Set TR dequeue pointer, so we're setting the dequeue pointer of the
@@ -1314,7 +1364,6 @@ static unsigned int xhci_parse_microframe_interval(struct usb_device *udev,
 	return xhci_microframes_to_exponent(udev, ep,
 			ep->desc.bInterval, 0, 15);
 }
-
 
 static unsigned int xhci_parse_frame_interval(struct usb_device *udev,
 		struct usb_host_endpoint *ep)
@@ -1726,7 +1775,7 @@ static int scratchpad_alloc(struct xhci_hcd *xhci, gfp_t flags)
 	xhci->dcbaa->dev_context_ptrs[0] = cpu_to_le64(xhci->scratchpad->sp_dma);
 	for (i = 0; i < num_sp; i++) {
 		dma_addr_t dma;
-		void *buf = dma_zalloc_coherent(dev, xhci->page_size, &dma,
+		void *buf = dma_alloc_coherent(dev, xhci->page_size, &dma,
 				flags);
 		if (!buf)
 			goto fail_sp5;
@@ -2202,11 +2251,14 @@ static void xhci_add_in_port(struct xhci_hcd *xhci, unsigned int num_ports,
 		xhci_dbg_trace(xhci, trace_xhci_dbg_init,
 				"xHCI 1.0: support USB2 software lpm");
 		xhci->sw_lpm_support = 1;
+#ifdef MY_ABC_HERE
+#else /* MY_ABC_HERE */
 		if (temp & XHCI_HLC) {
 			xhci_dbg_trace(xhci, trace_xhci_dbg_init,
 					"xHCI 1.0: support USB2 hardware lpm");
 			xhci->hw_lpm_support = 1;
 		}
+#endif /* MY_ABC_HERE */
 	}
 
 	port_offset--;
@@ -2510,7 +2562,7 @@ int xhci_mem_init(struct xhci_hcd *xhci, gfp_t flags)
 		(xhci->cmd_ring->first_seg->dma & (u64) ~CMD_RING_RSVD_BITS) |
 		xhci->cmd_ring->cycle_state;
 	xhci_dbg_trace(xhci, trace_xhci_dbg_init,
-			"// Setting command ring address to 0x%016llx", val_64);
+			"// Setting command ring address to 0x%x", val);
 	xhci_write_64(xhci, val_64, &xhci->op_regs->cmd_ring);
 	xhci_dbg_cmd_ptrs(xhci);
 

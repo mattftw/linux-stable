@@ -186,7 +186,6 @@ void make_lowmem_page_readwrite(void *vaddr)
 		BUG();
 }
 
-
 static bool xen_page_pinned(void *ptr)
 {
 	struct page *page = virt_to_page(ptr);
@@ -997,7 +996,6 @@ static void xen_dup_mmap(struct mm_struct *oldmm, struct mm_struct *mm)
 	spin_unlock(&mm->page_table_lock);
 }
 
-
 #ifdef CONFIG_SMP
 /* Another cpu may still have their %cr3 pointing at the pagetable, so
    we need to repoint it somewhere else before we can unpin it. */
@@ -1316,6 +1314,8 @@ void xen_flush_tlb_all(void)
 	struct mmuext_op *op;
 	struct multicall_space mcs;
 
+	trace_xen_mmu_flush_tlb_all(0);
+
 	preempt_disable();
 
 	mcs = xen_mc_entry(sizeof(*op));
@@ -1332,6 +1332,8 @@ static void xen_flush_tlb(void)
 {
 	struct mmuext_op *op;
 	struct multicall_space mcs;
+
+	trace_xen_mmu_flush_tlb(0);
 
 	preempt_disable();
 
@@ -2034,8 +2036,7 @@ static unsigned long __init xen_read_phys_ulong(phys_addr_t addr)
 
 /*
  * Translate a virtual address to a physical one without relying on mapped
- * page tables. Don't rely on big pages being aligned in (guest) physical
- * space!
+ * page tables.
  */
 static phys_addr_t __init xen_early_virt_to_phys(unsigned long vaddr)
 {
@@ -2056,7 +2057,7 @@ static phys_addr_t __init xen_early_virt_to_phys(unsigned long vaddr)
 						       sizeof(pud)));
 	if (!pud_present(pud))
 		return 0;
-	pa = pud_val(pud) & PTE_PFN_MASK;
+	pa = pud_pfn(pud) << PAGE_SHIFT;
 	if (pud_large(pud))
 		return pa + (vaddr & ~PUD_MASK);
 
@@ -2064,7 +2065,7 @@ static phys_addr_t __init xen_early_virt_to_phys(unsigned long vaddr)
 						       sizeof(pmd)));
 	if (!pmd_present(pmd))
 		return 0;
-	pa = pmd_val(pmd) & PTE_PFN_MASK;
+	pa = pmd_pfn(pmd) << PAGE_SHIFT;
 	if (pmd_large(pmd))
 		return pa + (vaddr & ~PMD_MASK);
 
@@ -2913,7 +2914,6 @@ int xen_remap_domain_gfn_array(struct vm_area_struct *vma,
 	return do_remap_gfn(vma, addr, gfn, nr, err_ptr, prot, domid, pages);
 }
 EXPORT_SYMBOL_GPL(xen_remap_domain_gfn_array);
-
 
 /* Returns: 0 success */
 int xen_unmap_domain_gfn_range(struct vm_area_struct *vma,

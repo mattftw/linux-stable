@@ -152,7 +152,6 @@ enum genwqe_dbg_type {
  *   sudo sh -c 'echo 0xfffff > /sys/class/genwqe/genwqe0_card/err_inject'
  */
 
-
 /**
  * struct dma_mapping_type - Mapping type definition
  *
@@ -404,7 +403,7 @@ struct genwqe_file {
 	struct file *filp;
 
 	struct fasync_struct *async_queue;
-	struct pid *opener;
+	struct task_struct *owner;
 	struct list_head list;		/* entry in list of open files */
 
 	spinlock_t map_lock;		/* lock for dma_mappings */

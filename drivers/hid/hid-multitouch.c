@@ -45,7 +45,6 @@
 #include <linux/input/mt.h>
 #include <linux/string.h>
 
-
 MODULE_AUTHOR("Stephane Chatty <chatty@enac.fr>");
 MODULE_AUTHOR("Benjamin Tissoires <benjamin.tissoires@gmail.com>");
 MODULE_DESCRIPTION("HID multitouch panels");
@@ -314,8 +313,7 @@ static struct attribute_group mt_attribute_group = {
 static void mt_get_feature(struct hid_device *hdev, struct hid_report *report)
 {
 	struct mt_device *td = hid_get_drvdata(hdev);
-	int ret;
-	u32 size = hid_report_len(report);
+	int ret, size = hid_report_len(report);
 	u8 *buf;
 
 	/*
@@ -920,7 +918,7 @@ static void mt_set_input_mode(struct hid_device *hdev)
 	struct hid_report_enum *re;
 	struct mt_class *cls = &td->mtclass;
 	char *buf;
-	u32 report_len;
+	int report_len;
 
 	if (td->inputmode < 0)
 		return;

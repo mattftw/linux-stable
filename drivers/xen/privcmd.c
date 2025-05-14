@@ -275,7 +275,6 @@ static long privcmd_ioctl_mmap(void __user *udata)
 			    &pagelist,
 			    mmap_gfn_range, &state);
 
-
 out_up:
 	up_write(&mm->mmap_sem);
 
@@ -335,8 +334,8 @@ static int mmap_batch_fn(void *data, int nr, void *state)
 				st->global_error = 1;
 		}
 	}
-	st->va += XEN_PAGE_SIZE * nr;
-	st->index += nr / XEN_PFN_PER_PAGE;
+	st->va += PAGE_SIZE * nr;
+	st->index += nr;
 
 	return 0;
 }

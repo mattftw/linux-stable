@@ -135,7 +135,6 @@ get_endpoints(struct usbtest_dev *dev, struct usb_interface *intf)
 			case USB_ENDPOINT_XFER_INT:
 				if (dev->info->intr)
 					goto try_intr;
-				continue;
 			case USB_ENDPOINT_XFER_ISOC:
 				if (dev->info->iso)
 					goto try_iso;
@@ -185,13 +184,12 @@ found:
 			return tmp;
 	}
 
-	if (in)
+	if (in) {
 		dev->in_pipe = usb_rcvbulkpipe(udev,
 			in->desc.bEndpointAddress & USB_ENDPOINT_NUMBER_MASK);
-	if (out)
 		dev->out_pipe = usb_sndbulkpipe(udev,
 			out->desc.bEndpointAddress & USB_ENDPOINT_NUMBER_MASK);
-
+	}
 	if (iso_in) {
 		dev->iso_in = &iso_in->desc;
 		dev->in_iso_pipe = usb_rcvisocpipe(udev,
@@ -482,7 +480,6 @@ static int simple_io(
 	return retval;
 }
 
-
 /*-------------------------------------------------------------------------*/
 
 /* We use scatterlist primitives to test queued I/O.
@@ -609,7 +606,6 @@ static int perform_sglist(
 				iterations, retval);
 	return retval;
 }
-
 
 /*-------------------------------------------------------------------------*/
 
@@ -1377,7 +1373,6 @@ cleanup:
 	return context.status;
 }
 #undef NUM_SUBCASES
-
 
 /*-------------------------------------------------------------------------*/
 
@@ -2696,7 +2691,6 @@ static int usbtest_resume(struct usb_interface *intf)
 	return 0;
 }
 
-
 static void usbtest_disconnect(struct usb_interface *intf)
 {
 	struct usbtest_dev	*dev = usb_get_intfdata(intf);
@@ -2790,7 +2784,6 @@ static struct usbtest_info generic_info = {
 	.alt		= -1,
 };
 #endif
-
 
 static const struct usb_device_id id_table[] = {
 
@@ -2896,4 +2889,3 @@ module_exit(usbtest_exit);
 
 MODULE_DESCRIPTION("USB Core/HCD Testing Driver");
 MODULE_LICENSE("GPL");
-

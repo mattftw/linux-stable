@@ -268,8 +268,7 @@ qla2x00_mbx_completion(scsi_qla_host_t *vha, uint16_t mb0)
 	struct device_reg_2xxx __iomem *reg = &ha->iobase->isp;
 
 	/* Read all mbox registers? */
-	WARN_ON_ONCE(ha->mbx_count > 32);
-	mboxes = (1ULL << ha->mbx_count) - 1;
+	mboxes = (1 << ha->mbx_count) - 1;
 	if (!ha->mcp)
 		ql_dbg(ql_dbg_async, vha, 0x5001, "MBX pointer ERROR.\n");
 	else
@@ -2467,10 +2466,6 @@ qla2x00_error_entry(scsi_qla_host_t *vha, struct rsp_que *rsp, sts_entry_t *pkt)
 	if (pkt->entry_status & RF_BUSY)
 		res = DID_BUS_BUSY << 16;
 
-	if (pkt->entry_type == NOTIFY_ACK_TYPE &&
-	    pkt->handle == QLA_TGT_SKIP_HANDLE)
-		return;
-
 	sp = qla2x00_get_sp_from_handle(vha, func, req, pkt);
 	if (sp) {
 		sp->done(ha, sp, res);
@@ -2496,8 +2491,7 @@ qla24xx_mbx_completion(scsi_qla_host_t *vha, uint16_t mb0)
 	struct device_reg_24xx __iomem *reg = &ha->iobase->isp24;
 
 	/* Read all mbox registers? */
-	WARN_ON_ONCE(ha->mbx_count > 32);
-	mboxes = (1ULL << ha->mbx_count) - 1;
+	mboxes = (1 << ha->mbx_count) - 1;
 	if (!ha->mcp)
 		ql_dbg(ql_dbg_async, vha, 0x504e, "MBX pointer ERROR.\n");
 	else
@@ -3219,7 +3213,6 @@ qla2x00_free_irqs(scsi_qla_host_t *vha)
 	} else
 		free_irq(ha->pdev->irq, rsp);
 }
-
 
 int qla25xx_request_irq(struct rsp_que *rsp)
 {

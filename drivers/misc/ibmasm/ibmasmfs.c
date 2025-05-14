@@ -26,7 +26,6 @@
  * that appeared in Linux Weekly News.
  */
 
-
 /*
  * The IBMASM file virtual filesystem. It creates the following hierarchy
  * dynamically when mounted from user space:
@@ -89,7 +88,6 @@ static LIST_HEAD(service_processors);
 static struct inode *ibmasmfs_make_inode(struct super_block *sb, int mode);
 static void ibmasmfs_create_files (struct super_block *sb);
 static int ibmasmfs_fill_super (struct super_block *sb, void *data, int silent);
-
 
 static struct dentry *ibmasmfs_mount(struct file_system_type *fst,
 			int flags, const char *name, void *data)
@@ -507,14 +505,35 @@ static int remote_settings_file_close(struct inode *inode, struct file *file)
 static ssize_t remote_settings_file_read(struct file *file, char __user *buf, size_t count, loff_t *offset)
 {
 	void __iomem *address = (void __iomem *)file->private_data;
+	unsigned char *page;
+	int retval;
 	int len = 0;
 	unsigned int value;
-	char lbuf[20];
+
+	if (*offset < 0)
+		return -EINVAL;
+	if (count == 0 || count > 1024)
+		return 0;
+	if (*offset != 0)
+		return 0;
+
+	page = (unsigned char *)__get_free_page(GFP_KERNEL);
+	if (!page)
+		return -ENOMEM;
 
 	value = readl(address);
-	len = snprintf(lbuf, sizeof(lbuf), "%d\n", value);
+	len = sprintf(page, "%d\n", value);
 
-	return simple_read_from_buffer(buf, count, offset, lbuf, len);
+	if (copy_to_user(buf, page, len)) {
+		retval = -EFAULT;
+		goto exit;
+	}
+	*offset += len;
+	retval = len;
+
+exit:
+	free_page((unsigned long)page);
+	return retval;
 }
 
 static ssize_t remote_settings_file_write(struct file *file, const char __user *ubuff, size_t count, loff_t *offset)
@@ -533,7 +552,6 @@ static ssize_t remote_settings_file_write(struct file *file, const char __user *
 	buff = kzalloc (count + 1, GFP_KERNEL);
 	if (!buff)
 		return -ENOMEM;
-
 
 	if (copy_from_user(buff, ubuff, count)) {
 		kfree(buff);
@@ -578,7 +596,6 @@ static const struct file_operations remote_settings_fops = {
 	.write =	remote_settings_file_write,
 	.llseek =	generic_file_llseek,
 };
-
 
 static void ibmasmfs_create_files (struct super_block *sb)
 {

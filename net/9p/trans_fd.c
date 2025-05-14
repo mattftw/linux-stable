@@ -185,8 +185,6 @@ static void p9_mux_poll_stop(struct p9_conn *m)
 	spin_lock_irqsave(&p9_poll_lock, flags);
 	list_del_init(&m->poll_pending_link);
 	spin_unlock_irqrestore(&p9_poll_lock, flags);
-
-	flush_work(&p9_poll_work);
 }
 
 /**
@@ -484,7 +482,6 @@ static void p9_write_work(struct work_struct *work)
 	p9_debug(P9_DEBUG_TRANS, "mux %p sent %d bytes\n", m, err);
 	if (err == -EAGAIN)
 		goto end_clear;
-
 
 	if (err < 0)
 		goto error;
@@ -922,7 +919,6 @@ static int p9_bind_privport(struct socket *sock)
 	return err;
 }
 
-
 static int
 p9_fd_create_tcp(struct p9_client *client, const char *addr, char *args)
 {
@@ -935,7 +931,7 @@ p9_fd_create_tcp(struct p9_client *client, const char *addr, char *args)
 	if (err < 0)
 		return err;
 
-	if (addr == NULL || valid_ipaddr4(addr) < 0)
+	if (valid_ipaddr4(addr) < 0)
 		return -EINVAL;
 
 	csocket = NULL;
@@ -982,9 +978,6 @@ p9_fd_create_unix(struct p9_client *client, const char *addr, char *args)
 	struct sockaddr_un sun_server;
 
 	csocket = NULL;
-
-	if (addr == NULL)
-		return -EINVAL;
 
 	if (strlen(addr) >= UNIX_PATH_MAX) {
 		pr_err("%s (%d): address too long: %s\n",

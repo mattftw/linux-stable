@@ -21,7 +21,6 @@
 
 #define RING_TYPE(ring) ((ring)->is_tx ? "TX ring" : "RX ring")
 
-
 static int ring_interrupt_index(struct tb_ring *ring)
 {
 	int bit = ring->hop;
@@ -340,7 +339,6 @@ err:
 	mutex_unlock(&ring->nhi->lock);
 }
 
-
 /**
  * ring_stop() - shutdown a ring
  *
@@ -418,7 +416,6 @@ void ring_free(struct tb_ring *ring)
 
 	ring->descriptors = NULL;
 	ring->descriptors_dma = 0;
-
 
 	dev_info(&ring->nhi->pdev->dev,
 		 "freeing %s %d\n",
@@ -627,7 +624,6 @@ static const struct dev_pm_ops nhi_pm_ops = {
 					    * we just disable hotplug, the
 					    * pci-tunnels stay alive.
 					    */
-	.thaw_noirq = nhi_resume_noirq,
 	.restore_noirq = nhi_resume_noirq,
 };
 

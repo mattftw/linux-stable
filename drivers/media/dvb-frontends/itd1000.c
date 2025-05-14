@@ -99,12 +99,10 @@ static int itd1000_read_reg(struct itd1000_state *state, u8 reg)
 
 static inline int itd1000_write_reg(struct itd1000_state *state, u8 r, u8 v)
 {
-	u8 tmp = v; /* see gcc.gnu.org/bugzilla/show_bug.cgi?id=81715 */
-	int ret = itd1000_write_regs(state, r, &tmp, 1);
-	state->shadow[r] = tmp;
+	int ret = itd1000_write_regs(state, r, &v, 1);
+	state->shadow[r] = v;
 	return ret;
 }
-
 
 static struct {
 	u32 symbol_rate;
@@ -221,7 +219,6 @@ static const struct {
 	{ 2150000, { 0x69, 0x1d, 0x1c, 0x17, 0x15, 0x14, 0x13, 0x0f, 0x0e, 0x0b } }
 };
 
-
 #define FREF 16
 
 static void itd1000_set_lo(struct itd1000_state *state, u32 freq_khz)
@@ -329,7 +326,6 @@ static u8 itd1000_reinit_tab[][2] = {
 	{ CON1,         0x2e },
 };
 
-
 static int itd1000_init(struct dvb_frontend *fe)
 {
 	struct itd1000_state *state = fe->tuner_priv;
@@ -373,7 +369,6 @@ static const struct dvb_tuner_ops itd1000_tuner_ops = {
 	.get_frequency = itd1000_get_frequency,
 	.get_bandwidth = itd1000_get_bandwidth
 };
-
 
 struct dvb_frontend *itd1000_attach(struct dvb_frontend *fe, struct i2c_adapter *i2c, struct itd1000_config *cfg)
 {

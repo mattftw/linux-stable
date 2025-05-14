@@ -605,7 +605,6 @@ static int find_rsb_dir(struct dlm_ls *ls, char *name, int len,
 	error = 0;
 	goto out_unlock;
 
-
  do_toss:
 	error = dlm_search_rsb_tree(&ls->ls_rsbtbl[b].toss, name, len, &r);
 	if (error)
@@ -650,7 +649,6 @@ static int find_rsb_dir(struct dlm_ls *ls, char *name, int len,
 	rb_erase(&r->res_hashnode, &ls->ls_rsbtbl[b].toss);
 	error = rsb_insert(r, &ls->ls_rsbtbl[b].keep);
 	goto out_unlock;
-
 
  do_new:
 	/*
@@ -749,7 +747,6 @@ static int find_rsb_nodir(struct dlm_ls *ls, char *name, int len,
 	kref_get(&r->res_ref);
 	goto out_unlock;
 
-
  do_toss:
 	error = dlm_search_rsb_tree(&ls->ls_rsbtbl[b].toss, name, len, &r);
 	if (error)
@@ -785,7 +782,6 @@ static int find_rsb_nodir(struct dlm_ls *ls, char *name, int len,
 	rb_erase(&r->res_hashnode, &ls->ls_rsbtbl[b].toss);
 	error = rsb_insert(r, &ls->ls_rsbtbl[b].keep);
 	goto out_unlock;
-
 
  do_new:
 	/*
@@ -1210,7 +1206,6 @@ static int create_lkb(struct dlm_ls *ls, struct dlm_lkb **lkb_ret)
 
 	if (rv < 0) {
 		log_error(ls, "create_lkb idr error %d", rv);
-		dlm_free_lkb(lkb);
 		return rv;
 	}
 
@@ -4178,7 +4173,6 @@ static int receive_convert(struct dlm_ls *ls, struct dlm_message *ms)
 			  (unsigned long long)lkb->lkb_recover_seq,
 			  ms->m_header.h_nodeid, ms->m_lkid);
 		error = -ENOENT;
-		dlm_put_lkb(lkb);
 		goto fail;
 	}
 
@@ -4232,7 +4226,6 @@ static int receive_unlock(struct dlm_ls *ls, struct dlm_message *ms)
 			  lkb->lkb_id, lkb->lkb_remid,
 			  ms->m_header.h_nodeid, ms->m_lkid);
 		error = -ENOENT;
-		dlm_put_lkb(lkb);
 		goto fail;
 	}
 
@@ -5795,20 +5788,20 @@ int dlm_user_request(struct dlm_ls *ls, struct dlm_user_args *ua,
 			goto out;
 		}
 	}
-	error = set_lock_args(mode, &ua->lksb, flags, namelen, timeout_cs,
-			      fake_astfn, ua, fake_bastfn, &args);
-	if (error) {
-		kfree(ua->lksb.sb_lvbptr);
-		ua->lksb.sb_lvbptr = NULL;
-		kfree(ua);
-		__put_lkb(ls, lkb);
-		goto out;
-	}
 
 	/* After ua is attached to lkb it will be freed by dlm_free_lkb().
 	   When DLM_IFL_USER is set, the dlm knows that this is a userspace
 	   lock and that lkb_astparam is the dlm_user_args structure. */
+
+	error = set_lock_args(mode, &ua->lksb, flags, namelen, timeout_cs,
+			      fake_astfn, ua, fake_bastfn, &args);
 	lkb->lkb_flags |= DLM_IFL_USER;
+
+	if (error) {
+		__put_lkb(ls, lkb);
+		goto out;
+	}
+
 	error = request_lock(ls, lkb, name, namelen, &args);
 
 	switch (error) {
@@ -6304,4 +6297,3 @@ int dlm_user_purge(struct dlm_ls *ls, struct dlm_user_proc *proc,
 	}
 	return error;
 }
-

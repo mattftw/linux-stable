@@ -1195,13 +1195,11 @@ static ssize_t tun_get_user(struct tun_struct *tun, struct tun_file *tfile,
 	switch (tun->flags & TUN_TYPE_MASK) {
 	case IFF_TUN:
 		if (tun->flags & IFF_NO_PI) {
-			u8 ip_version = skb->len ? (skb->data[0] >> 4) : 0;
-
-			switch (ip_version) {
-			case 4:
+			switch (skb->data[0] & 0xf0) {
+			case 0x40:
 				pi.proto = htons(ETH_P_IP);
 				break;
-			case 6:
+			case 0x60:
 				pi.proto = htons(ETH_P_IPV6);
 				break;
 			default:
@@ -1475,9 +1473,7 @@ static void tun_setup(struct net_device *dev)
  */
 static int tun_validate(struct nlattr *tb[], struct nlattr *data[])
 {
-	/* NL_SET_ERR_MSG(extack,
-		       "tun/tap creation via rtnetlink is not supported."); */
-	return -EOPNOTSUPP;
+	return -EINVAL;
 }
 
 static struct rtnl_link_ops tun_link_ops __read_mostly = {
@@ -1686,9 +1682,6 @@ static int tun_set_iff(struct net *net, struct file *file, struct ifreq *ifr)
 
 		if (!dev)
 			return -ENOMEM;
-		err = dev_get_valid_name(net, dev, name);
-		if (err < 0)
-			goto err_free_dev;
 
 		dev_net_set(dev, net);
 		dev->rtnl_link_ops = &tun_link_ops;
@@ -2070,10 +2063,6 @@ static long __tun_chr_ioctl(struct file *file, unsigned int cmd,
 			ret = -EFAULT;
 			break;
 		}
-		if (sndbuf <= 0) {
-			ret = -EINVAL;
-			break;
-		}
 
 		tun->sndbuf = sndbuf;
 		tun_set_sndbuf(tun);
@@ -2368,7 +2357,6 @@ static const struct ethtool_ops tun_ethtool_ops = {
 	.get_link	= ethtool_op_get_link,
 	.get_ts_info	= ethtool_op_get_ts_info,
 };
-
 
 static int __init tun_init(void)
 {

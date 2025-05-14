@@ -89,7 +89,6 @@ struct ntrig_data {
 	__u16 sensor_physical_height;
 };
 
-
 /*
  * This function converts the 4 byte raw firmware code into
  * a string containing 5 comma separated numbers.
@@ -760,7 +759,6 @@ static int ntrig_event (struct hid_device *hid, struct hid_field *field,
 
 		nd->reading_mt = 0;
 
-
 		/*
 		 * Activation state machine logic:
 		 *
@@ -955,8 +953,6 @@ static int ntrig_probe(struct hid_device *hdev, const struct hid_device_id *id)
 
 	ret = sysfs_create_group(&hdev->dev.kobj,
 			&ntrig_attribute_group);
-	if (ret)
-		hid_err(hdev, "cannot create sysfs group\n");
 
 	return 0;
 err_free:

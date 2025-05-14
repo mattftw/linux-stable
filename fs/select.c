@@ -29,10 +29,8 @@
 #include <linux/sched/rt.h>
 #include <linux/freezer.h>
 #include <net/busy_poll.h>
-#include <linux/vmalloc.h>
 
 #include <asm/uaccess.h>
-
 
 /*
  * Estimate expected accuracy in ns from a timeval.
@@ -90,8 +88,6 @@ long select_estimate_accuracy(struct timespec *tv)
 		return current->timer_slack_ns;
 	return ret;
 }
-
-
 
 struct poll_table_page {
 	struct poll_table_page * next;
@@ -551,7 +547,7 @@ int core_sys_select(int n, fd_set __user *inp, fd_set __user *outp,
 	fd_set_bits fds;
 	void *bits;
 	int ret, max_fds;
-	size_t size, alloc_size;
+	unsigned int size;
 	struct fdtable *fdt;
 	/* Allocate small arguments on the stack to save memory and be faster */
 	long stack_fds[SELECT_STACK_ALLOC/sizeof(long)];
@@ -578,14 +574,7 @@ int core_sys_select(int n, fd_set __user *inp, fd_set __user *outp,
 	if (size > sizeof(stack_fds) / 6) {
 		/* Not enough space in on-stack array; must use kmalloc */
 		ret = -ENOMEM;
-		if (size > (SIZE_MAX / 6))
-			goto out_nofds;
-
-		alloc_size = 6 * size;
-		bits = kmalloc(alloc_size, GFP_KERNEL|__GFP_NOWARN);
-		if (!bits && alloc_size > PAGE_SIZE)
-			bits = vmalloc(alloc_size);
-
+		bits = kmalloc(6 * size, GFP_KERNEL);
 		if (!bits)
 			goto out_nofds;
 	}
@@ -622,7 +611,7 @@ int core_sys_select(int n, fd_set __user *inp, fd_set __user *outp,
 
 out:
 	if (bits != stack_fds)
-		kvfree(bits);
+		kfree(bits);
 out_nofds:
 	return ret;
 }

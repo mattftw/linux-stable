@@ -167,7 +167,6 @@ static ssize_t cpia2_v4l_read(struct file *file, char __user *buf, size_t count,
 	return ret;
 }
 
-
 /******************************************************************************
  *
  *  cpia2_v4l_poll
@@ -183,7 +182,6 @@ static unsigned int cpia2_v4l_poll(struct file *filp, struct poll_table_struct *
 	mutex_unlock(&cam->v4l2_lock);
 	return res;
 }
-
 
 static int sync(struct camera_data *cam, int frame_nr)
 {
@@ -812,7 +810,7 @@ static int cpia2_querybuf(struct file *file, void *fh, struct v4l2_buffer *buf)
 	struct camera_data *cam = video_drvdata(file);
 
 	if(buf->type != V4L2_BUF_TYPE_VIDEO_CAPTURE ||
-	   buf->index >= cam->num_frames)
+	   buf->index > cam->num_frames)
 		return -EINVAL;
 
 	buf->m.offset = cam->buffers[buf->index].data - cam->frame_buffer;
@@ -863,7 +861,7 @@ static int cpia2_qbuf(struct file *file, void *fh, struct v4l2_buffer *buf)
 
 	if(buf->type != V4L2_BUF_TYPE_VIDEO_CAPTURE ||
 	   buf->memory != V4L2_MEMORY_MMAP ||
-	   buf->index >= cam->num_frames)
+	   buf->index > cam->num_frames)
 		return -EINVAL;
 
 	DBG("QBUF #%d\n", buf->index);
@@ -941,7 +939,6 @@ static int cpia2_dqbuf(struct file *file, void *fh, struct v4l2_buffer *buf)
 			return -ENOTTY;
 		frame = cb->num;
 	}
-
 
 	buf->index = frame;
 	buf->bytesused = cam->buffers[buf->index].length;
@@ -1237,7 +1234,6 @@ static void __init check_parameters(void)
 
 /************   Module Stuff ***************/
 
-
 /******************************************************************************
  *
  * cpia2_init/module_init
@@ -1251,7 +1247,6 @@ static int __init cpia2_init(void)
 	cpia2_usb_init();
 	return 0;
 }
-
 
 /******************************************************************************
  *

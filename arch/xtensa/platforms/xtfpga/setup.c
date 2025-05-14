@@ -55,7 +55,6 @@ void platform_restart(void)
 	/* Flush and reset the mmu, simulate a processor reset, and
 	 * jump to the reset vector. */
 
-
 	__asm__ __volatile__ ("movi	a2, 15\n\t"
 			      "wsr	a2, icountlevel\n\t"
 			      "movi	a2, 0\n\t"
@@ -209,8 +208,8 @@ static struct resource ethoc_res[] = {
 		.flags = IORESOURCE_MEM,
 	},
 	[2] = { /* IRQ number */
-		.start = XTENSA_PIC_LINUX_IRQ(OETH_IRQ),
-		.end   = XTENSA_PIC_LINUX_IRQ(OETH_IRQ),
+		.start = OETH_IRQ,
+		.end   = OETH_IRQ,
 		.flags = IORESOURCE_IRQ,
 	},
 };
@@ -246,8 +245,8 @@ static struct resource c67x00_res[] = {
 		.flags = IORESOURCE_MEM,
 	},
 	[1] = { /* IRQ number */
-		.start = XTENSA_PIC_LINUX_IRQ(C67X00_IRQ),
-		.end   = XTENSA_PIC_LINUX_IRQ(C67X00_IRQ),
+		.start = C67X00_IRQ,
+		.end   = C67X00_IRQ,
 		.flags = IORESOURCE_IRQ,
 	},
 };
@@ -280,7 +279,7 @@ static struct resource serial_resource = {
 static struct plat_serial8250_port serial_platform_data[] = {
 	[0] = {
 		.mapbase	= DUART16552_PADDR,
-		.irq		= XTENSA_PIC_LINUX_IRQ(DUART16552_INTNUM),
+		.irq		= DUART16552_INTNUM,
 		.flags		= UPF_BOOT_AUTOCONF | UPF_SKIP_TEST |
 				  UPF_IOREMAP,
 		.iotype		= UPIO_MEM32,
@@ -307,7 +306,6 @@ static struct platform_device *platform_devices[] __initdata = {
 	&xtavnet_uart,
 };
 
-
 static int __init xtavnet_init(void)
 {
 	/* Ethernet MAC address.  */
@@ -317,7 +315,6 @@ static int __init xtavnet_init(void)
 	 * reports the actual clock rate.
 	 */
 	serial_platform_data[0].uartclk = *(long *)XTFPGA_CLKFRQ_VADDR;
-
 
 	/* register platform devices */
 	platform_add_devices(platform_devices, ARRAY_SIZE(platform_devices));

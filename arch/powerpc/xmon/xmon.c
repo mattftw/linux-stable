@@ -2144,8 +2144,6 @@ static void dump_one_paca(int cpu)
 	DUMP(p, slb_cache_ptr, "x");
 	for (i = 0; i < SLB_CACHE_ENTRIES; i++)
 		printf(" slb_cache[%d]:        = 0x%016lx\n", i, p->slb_cache[i]);
-
-	DUMP(p, rfi_flush_fallback_area, "px");
 #endif
 	DUMP(p, dscr_default, "llx");
 #ifdef CONFIG_PPC_BOOK3E
@@ -2737,7 +2735,6 @@ take_input(char *str)
 	lineptr = str;
 }
 
-
 static void
 symbol_lookup(void)
 {
@@ -2768,7 +2765,6 @@ symbol_lookup(void)
 		break;
 	}
 }
-
 
 /* Print an address in numeric and symbolic form (if possible) */
 static void xmon_print_symbol(unsigned long address, const char *mid,

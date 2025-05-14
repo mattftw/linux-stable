@@ -10,7 +10,6 @@
  *
  */
 
-
 #include <linux/module.h>
 #include <linux/mm.h>
 #include <linux/bootmem.h>
@@ -491,8 +490,12 @@ static void __init map_pages(unsigned long start_vaddr,
 						pte = pte_mkhuge(pte);
 				}
 
-				if (address >= end_paddr)
-					break;
+				if (address >= end_paddr) {
+					if (force)
+						break;
+					else
+						pte_val(pte) = 0;
+				}
 
 				set_pte(pg_table, pte);
 
@@ -540,7 +543,6 @@ void free_initmem(void)
 	pdc_chassis_send_status(PDC_CHASSIS_DIRECT_BCOMPLETE);
 }
 
-
 #ifdef CONFIG_DEBUG_RODATA
 void mark_rodata_ro(void)
 {
@@ -550,7 +552,6 @@ void mark_rodata_ro(void)
 		(unsigned long)(__end_rodata - __start_rodata) >> 10);
 }
 #endif
-
 
 /*
  * Just an arbitrary offset to serve as a "hole" between mapping areas
@@ -866,7 +867,6 @@ void free_sid(unsigned long spaceid)
 
 	spin_unlock(&sid_lock);
 }
-
 
 #ifdef CONFIG_SMP
 static void get_dirty_sids(unsigned long *ndirtyptr,unsigned long *dirty_array)

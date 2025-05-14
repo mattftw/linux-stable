@@ -632,10 +632,7 @@ static void handle_cont_sngl_cycle_dma_done(struct tegra_dma_channel *tdc,
 
 	sgreq = list_first_entry(&tdc->pending_sg_req, typeof(*sgreq), node);
 	dma_desc = sgreq->dma_desc;
-	/* if we dma for long enough the transfer count will wrap */
-	dma_desc->bytes_transferred =
-		(dma_desc->bytes_transferred + sgreq->req_len) %
-		dma_desc->bytes_requested;
+	dma_desc->bytes_transferred += sgreq->req_len;
 
 	/* Callback need to be call */
 	if (!dma_desc->cb_count)
@@ -1292,7 +1289,6 @@ static const struct tegra_dma_chip_data tegra148_dma_chip_data = {
 	.support_channel_pause	= true,
 	.support_separate_wcount_reg = true,
 };
-
 
 static const struct of_device_id tegra_dma_of_match[] = {
 	{

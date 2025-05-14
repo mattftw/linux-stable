@@ -27,7 +27,6 @@
 
 #define BITSSET		0x1c0	/* for identifying LDCW */
 
-
 DEFINE_PER_CPU(struct exception_data, exception_data);
 
 int show_unhandled_signals = 1;
@@ -114,7 +113,6 @@ parisc_acctyp(unsigned long code, unsigned int inst)
 #undef bits23_25set
 #undef isGraphicsFlushRead
 #undef BITSSET
-
 
 #if 0
 /* This is the treewalk to find a vma which is the highest that has
@@ -303,7 +301,7 @@ bad_area:
 		case 15:	/* Data TLB miss fault/Data page fault */
 			/* send SIGSEGV when outside of vma */
 			if (!vma ||
-			    address < vma->vm_start || address >= vma->vm_end) {
+			    address < vma->vm_start || address > vma->vm_end) {
 				si.si_signo = SIGSEGV;
 				si.si_code = SEGV_MAPERR;
 				break;

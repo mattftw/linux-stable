@@ -198,7 +198,6 @@ instance_create(struct net *net, u_int16_t group_num,
 	hlist_add_head_rcu(&inst->hlist,
 		       &log->instance_table[instance_hashfn(group_num)]);
 
-
 	spin_unlock_bh(&log->instances_lock);
 
 	return inst;
@@ -697,7 +696,6 @@ nfulnl_log_packet(struct net *net,
 		if (qthreshold > li->u.ulog.qthreshold)
 			qthreshold = li->u.ulog.qthreshold;
 
-
 	switch (inst->copy_mode) {
 	case NFULNL_COPY_META:
 	case NFULNL_COPY_NONE:
@@ -895,7 +893,7 @@ nfulnl_recv_config(struct sock *ctnl, struct sk_buff *skb,
 			goto out_put;
 		default:
 			ret = -ENOTSUPP;
-			goto out_put;
+			break;
 		}
 	} else if (!inst) {
 		ret = -ENODEV;

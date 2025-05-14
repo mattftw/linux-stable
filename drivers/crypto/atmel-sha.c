@@ -13,7 +13,6 @@
  * Some ideas are from omap-sham.c drivers.
  */
 
-
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -963,9 +962,7 @@ static int atmel_sha_finup(struct ahash_request *req)
 	ctx->flags |= SHA_FLAGS_FINUP;
 
 	err1 = atmel_sha_update(req);
-	if (err1 == -EINPROGRESS ||
-	    (err1 == -EBUSY && (ahash_request_flags(req) &
-				CRYPTO_TFM_REQ_MAY_BACKLOG)))
+	if (err1 == -EINPROGRESS || err1 == -EBUSY)
 		return err1;
 
 	/*

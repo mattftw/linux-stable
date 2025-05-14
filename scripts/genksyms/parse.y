@@ -20,7 +20,6 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
-
 %{
 
 #include <assert.h>
@@ -320,6 +319,8 @@ direct_declarator:
 		{ $$ = $2; }
 	| '(' declarator ')'
 		{ $$ = $3; }
+	| '(' error ')'
+		{ $$ = $3; }
 	;
 
 /* Nested declarators differ from regular declarators in that they do
@@ -500,7 +501,6 @@ export_definition:
 	EXPORT_SYMBOL_KEYW '(' IDENT ')' ';'
 		{ export_symbol((*$3)->string); $$ = $5; }
 	;
-
 
 %%
 

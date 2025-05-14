@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * linux/fs/jbd2/journal.c
  *
@@ -275,11 +278,11 @@ loop:
 	goto loop;
 
 end_loop:
+	write_unlock(&journal->j_state_lock);
 	del_timer_sync(&journal->j_commit_timer);
 	journal->j_task = NULL;
 	wake_up(&journal->j_wait_done_commit);
 	jbd_debug(1, "Journal thread exiting.\n");
-	write_unlock(&journal->j_state_lock);
 	return 0;
 }
 
@@ -914,7 +917,7 @@ out:
 }
 
 /*
- * This is a variation of __jbd2_update_log_tail which checks for validity of
+ * This is a variaon of __jbd2_update_log_tail which checks for validity of
  * provided log tail and locks j_checkpoint_mutex. So it is safe against races
  * with other threads updating log tail.
  */
@@ -1384,9 +1387,6 @@ int jbd2_journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
 	journal_superblock_t *sb = journal->j_superblock;
 	int ret;
 
-	if (is_journal_aborted(journal))
-		return -EIO;
-
 	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
 	jbd_debug(1, "JBD2: updating superblock (start %lu, seq %u)\n",
 		  tail_block, tail_tid);
@@ -1441,7 +1441,6 @@ static void jbd2_mark_journal_empty(journal_t *journal, int write_op)
 	journal->j_flags |= JBD2_FLUSHED;
 	write_unlock(&journal->j_state_lock);
 }
-
 
 /**
  * jbd2_journal_update_sb_errno() - Update error in the journal.
@@ -1562,8 +1561,11 @@ static int journal_get_superblock(journal_t *journal)
 	/* Check superblock checksum */
 	if (!jbd2_superblock_csum_verify(journal, sb)) {
 		printk(KERN_ERR "JBD2: journal checksum error\n");
+#ifdef MY_ABC_HERE
+#else
 		err = -EFSBADCRC;
 		goto out;
+#endif /* CONFIG_SYNO_EXT4_METADATA_CSUM_SMOOTH_ERR_HANGLING */
 	}
 
 	/* Precompute checksum seed for all metadata */
@@ -1604,7 +1606,6 @@ static int load_superblock(journal_t *journal)
 
 	return 0;
 }
-
 
 /**
  * int jbd2_journal_load() - Read journal from disk.
@@ -1745,7 +1746,6 @@ int jbd2_journal_destroy(journal_t *journal)
 
 	return err;
 }
-
 
 /**
  *int jbd2_journal_check_used_features () - Check if features specified are used.
@@ -2249,7 +2249,6 @@ static const char *jbd2_slab_names[JBD2_MAX_SLABS] = {
 	"jbd2_16k", "jbd2_32k", "jbd2_64k", "jbd2_128k"
 };
 
-
 static void jbd2_journal_destroy_slabs(void)
 {
 	int i;
@@ -2593,7 +2592,6 @@ restart:
 	spin_unlock(&journal->j_list_lock);
 }
 
-
 #ifdef CONFIG_PROC_FS
 
 #define JBD2_STATS_PROC_NAME "fs/jbd2"
@@ -2699,4 +2697,3 @@ static void __exit journal_exit(void)
 MODULE_LICENSE("GPL");
 module_init(journal_init);
 module_exit(journal_exit);
-

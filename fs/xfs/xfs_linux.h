@@ -210,7 +210,6 @@ static inline kgid_t xfs_gid_to_kgid(__uint32_t gid)
 #define xfs_sort(a,n,s,fn)	sort(a,n,s,fn,NULL)
 #define xfs_stack_trace()	dump_stack()
 
-
 /* Move the kernel do_div definition off to one side */
 
 #if defined __i386__
@@ -369,14 +368,7 @@ static inline __uint64_t howmany_64(__uint64_t x, __uint32_t y)
 #endif /* DEBUG */
 
 #ifdef CONFIG_XFS_RT
-
-/*
- * make sure we ignore the inode flag if the filesystem doesn't have a
- * configured realtime device.
- */
-#define XFS_IS_REALTIME_INODE(ip)			\
-	(((ip)->i_d.di_flags & XFS_DIFLAG_REALTIME) &&	\
-	 (ip)->i_mount->m_rtdev_targp)
+#define XFS_IS_REALTIME_INODE(ip) ((ip)->i_d.di_flags & XFS_DIFLAG_REALTIME)
 #else
 #define XFS_IS_REALTIME_INODE(ip) (0)
 #endif

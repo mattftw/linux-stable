@@ -221,6 +221,7 @@ static int xen_blkif_disconnect(struct xen_blkif *blkif)
 	if (blkif->xenblkd) {
 		kthread_stop(blkif->xenblkd);
 		wake_up(&blkif->shutdown_wq);
+		blkif->xenblkd = NULL;
 	}
 
 	/* The above kthread_stop() guarantees that at this point we
@@ -265,10 +266,9 @@ static int xen_blkif_disconnect(struct xen_blkif *blkif)
 
 static void xen_blkif_free(struct xen_blkif *blkif)
 {
-	WARN_ON(xen_blkif_disconnect(blkif));
+
+	xen_blkif_disconnect(blkif);
 	xen_vbd_free(&blkif->vbd);
-	kfree(blkif->be->mode);
-	kfree(blkif->be);
 
 	/* Make sure everything is drained before shutting down */
 	BUG_ON(blkif->persistent_gnt_c != 0);
@@ -366,7 +366,6 @@ static void xenvbd_sysfs_delif(struct xenbus_device *dev)
 	device_remove_file(&dev->dev, &dev_attr_physical_device);
 }
 
-
 static void xen_vbd_free(struct xen_vbd *vbd)
 {
 	if (vbd->bdev)
@@ -445,6 +444,8 @@ static int xen_blkbk_remove(struct xenbus_device *dev)
 		xen_blkif_put(be->blkif);
 	}
 
+	kfree(be->mode);
+	kfree(be);
 	return 0;
 }
 
@@ -576,7 +577,6 @@ fail:
 	return err;
 }
 
-
 /*
  * Callback received when the hotplug scripts have placed the physical-device
  * node.  Read it and the mode node, and create a vbd.  If the frontend is
@@ -665,7 +665,6 @@ static void backend_changed(struct xenbus_watch *watch,
 	}
 }
 
-
 /*
  * Callback received when the frontend's state changes.
  */
@@ -733,9 +732,7 @@ static void frontend_changed(struct xenbus_device *dev,
 	}
 }
 
-
 /* ** Connection ** */
-
 
 /*
  * Write the physical details regarding the block device to the store, and
@@ -822,7 +819,6 @@ again:
  abort:
 	xenbus_transaction_end(xbt, 1);
 }
-
 
 static int connect_ring(struct backend_info *be)
 {

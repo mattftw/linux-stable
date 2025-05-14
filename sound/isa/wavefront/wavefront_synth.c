@@ -675,7 +675,6 @@ wavefront_get_sample_status (snd_wavefront_t *dev, int assume_rom)
 		    "%d empty\n", dev->samples_used, sc_real, sc_alias, sc_multi,
 		    WF_MAX_SAMPLE - dev->samples_used);
 
-
 	return (0);
 
 }
@@ -785,9 +784,6 @@ wavefront_send_patch (snd_wavefront_t *dev, wavefront_patch_info *header)
 	DPRINT (WF_DEBUG_LOAD_PATCH, "downloading patch %d\n",
 				      header->number);
 
-	if (header->number >= ARRAY_SIZE(dev->patch_status))
-		return -EINVAL;
-
 	dev->patch_status[header->number] |= WF_SLOT_FILLED;
 
 	bptr = buf;
@@ -811,9 +807,6 @@ wavefront_send_program (snd_wavefront_t *dev, wavefront_patch_info *header)
 
 	DPRINT (WF_DEBUG_LOAD_PATCH, "downloading program %d\n",
 		header->number);
-
-	if (header->number >= ARRAY_SIZE(dev->prog_status))
-		return -EINVAL;
 
 	dev->prog_status[header->number] = WF_SLOT_USED;
 
@@ -903,9 +896,6 @@ wavefront_send_sample (snd_wavefront_t *dev,
 		snd_printk ("unspecified sample => %d\n", x);
 		header->number = x;
 	}
-
-	if (header->number >= WF_MAX_SAMPLE)
-		return -EINVAL;
 
 	if (header->size) {
 
@@ -1303,7 +1293,6 @@ wavefront_fetch_multisample (snd_wavefront_t *dev,
 	return (0);
 }
 
-
 static int
 wavefront_send_drum (snd_wavefront_t *dev, wavefront_patch_info *header)
 
@@ -1695,7 +1684,6 @@ snd_wavefront_synth_ioctl (struct snd_hwdep *hw, struct file *file,
 	return 0;
 }
 
-
 /***********************************************************************/
 /*  WaveFront: interface for card-level wavefront module               */
 /***********************************************************************/
@@ -1941,7 +1929,6 @@ wavefront_reset_to_cleanliness (snd_wavefront_t *dev)
 
 	return 0;
 
-
      gone_bad:
 	return (1);
 }
@@ -2017,7 +2004,6 @@ wavefront_download_firmware (snd_wavefront_t *dev, char *path)
 	snd_printk(KERN_ERR "firmware download failed!!!\n");
 	return 1;
 }
-
 
 static int
 wavefront_do_reset (snd_wavefront_t *dev)
@@ -2096,7 +2082,6 @@ wavefront_do_reset (snd_wavefront_t *dev)
 		snd_printk ("cannot set number of voices to 32.\n");
 		goto gone_bad;
 	}
-
 
 	return 0;
 

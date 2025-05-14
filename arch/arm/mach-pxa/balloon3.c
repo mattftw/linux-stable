@@ -17,7 +17,6 @@
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
-#include <linux/leds.h>
 #include <linux/sched.h>
 #include <linux/bitops.h>
 #include <linux/fb.h>
@@ -183,7 +182,6 @@ static unsigned long balloon3_ac97_pin_config[] __initdata = {
 static struct ucb1400_pdata vpac270_ucb1400_pdata = {
 	.irq		= PXA_GPIO_TO_IRQ(BALLOON3_GPIO_CODEC_IRQ),
 };
-
 
 static struct platform_device balloon3_ucb1400_device = {
 	.name		= "ucb1400_core",

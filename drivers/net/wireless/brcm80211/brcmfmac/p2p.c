@@ -424,7 +424,6 @@ static void brcmf_p2p_print_actframe(bool tx, void *frame, u32 frame_len)
 
 #endif
 
-
 /**
  * brcmf_p2p_set_firmware() - prepare firmware for peer-to-peer operation.
  *
@@ -461,23 +460,25 @@ static int brcmf_p2p_set_firmware(struct brcmf_if *ifp, u8 *p2p_mac)
  * @dev_addr: optional device address.
  *
  * P2P needs mac addresses for P2P device and interface. If no device
- * address it specified, these are derived from a random ethernet
- * address.
+ * address it specified, these are derived from the primary net device, ie.
+ * the permanent ethernet address of the device.
  */
 static void brcmf_p2p_generate_bss_mac(struct brcmf_p2p_info *p2p, u8 *dev_addr)
 {
-	bool random_addr = false;
+	struct brcmf_if *pri_ifp = p2p->bss_idx[P2PAPI_BSSCFG_PRIMARY].vif->ifp;
+	bool local_admin = false;
 
-	if (!dev_addr || is_zero_ether_addr(dev_addr))
-		random_addr = true;
+	if (!dev_addr || is_zero_ether_addr(dev_addr)) {
+		dev_addr = pri_ifp->mac_addr;
+		local_admin = true;
+	}
 
-	/* Generate the P2P Device Address obtaining a random ethernet
-	 * address with the locally administered bit set.
+	/* Generate the P2P Device Address.  This consists of the device's
+	 * primary MAC address with the locally administered bit set.
 	 */
-	if (random_addr)
-		eth_random_addr(p2p->dev_addr);
-	else
-		memcpy(p2p->dev_addr, dev_addr, ETH_ALEN);
+	memcpy(p2p->dev_addr, dev_addr, ETH_ALEN);
+	if (local_admin)
+		p2p->dev_addr[0] |= 0x02;
 
 	/* Generate the P2P Interface Address.  If the discovery and connection
 	 * BSSCFGs need to simultaneously co-exist, then this address must be
@@ -834,7 +835,6 @@ exit:
 	return err;
 }
 
-
 /**
  * brcmf_p2p_find_listen_channel() - find listen channel in ie string.
  *
@@ -869,7 +869,6 @@ static s32 brcmf_p2p_find_listen_channel(const u8 *ie, u32 ie_len)
 
 	return -EPERM;
 }
-
 
 /**
  * brcmf_p2p_scan_prep() - prepare scan based on request.
@@ -915,7 +914,6 @@ int brcmf_p2p_scan_prep(struct wiphy *wiphy,
 	return err;
 }
 
-
 /**
  * brcmf_p2p_discover_listen() - set firmware to discover listen state.
  *
@@ -957,7 +955,6 @@ exit:
 	return err;
 }
 
-
 /**
  * brcmf_p2p_remain_on_channel() - put device on channel and stay there.
  *
@@ -994,7 +991,6 @@ exit:
 	return err;
 }
 
-
 /**
  * brcmf_p2p_notify_listen_complete() - p2p listen has completed.
  *
@@ -1029,7 +1025,6 @@ int brcmf_p2p_notify_listen_complete(struct brcmf_if *ifp,
 	return 0;
 }
 
-
 /**
  * brcmf_p2p_cancel_remain_on_channel() - cancel p2p listen state.
  *
@@ -1043,7 +1038,6 @@ void brcmf_p2p_cancel_remain_on_channel(struct brcmf_if *ifp)
 	brcmf_p2p_set_discover_state(ifp, WL_P2P_DISC_ST_SCAN, 0, 0);
 	brcmf_p2p_notify_listen_complete(ifp, NULL, NULL);
 }
-
 
 /**
  * brcmf_p2p_act_frm_search() - search function for action frame.
@@ -1101,7 +1095,6 @@ exit:
 	return err;
 }
 
-
 /**
  * brcmf_p2p_afx_handler() - afx worker thread.
  *
@@ -1133,7 +1126,6 @@ static void brcmf_p2p_afx_handler(struct work_struct *work)
 			complete(&afx_hdl->act_frm_scan);
 	}
 }
-
 
 /**
  * brcmf_p2p_af_searching_channel() - search channel.
@@ -1206,7 +1198,6 @@ static s32 brcmf_p2p_af_searching_channel(struct brcmf_p2p_info *p2p)
 
 	return afx_hdl->peer_chan;
 }
-
 
 /**
  * brcmf_p2p_scan_finding_common_channel() - was escan used for finding channel
@@ -1289,7 +1280,6 @@ brcmf_p2p_stop_wait_next_action_frame(struct brcmf_cfg80211_info *cfg)
 	}
 }
 
-
 /**
  * brcmf_p2p_gon_req_collision() - Check if go negotiaton collission
  *
@@ -1336,7 +1326,6 @@ brcmf_p2p_gon_req_collision(struct brcmf_p2p_info *p2p, u8 *mac)
 
 	return true;
 }
-
 
 /**
  * brcmf_p2p_notify_action_frame_rx() - received action frame.
@@ -1439,7 +1428,6 @@ int brcmf_p2p_notify_action_frame_rx(struct brcmf_if *ifp,
 	return 0;
 }
 
-
 /**
  * brcmf_p2p_notify_action_tx_complete() - transmit action frame complete
  *
@@ -1480,7 +1468,6 @@ int brcmf_p2p_notify_action_tx_complete(struct brcmf_if *ifp,
 	}
 	return 0;
 }
-
 
 /**
  * brcmf_p2p_tx_action_frame() - send action frame over fil.
@@ -1534,7 +1521,6 @@ static s32 brcmf_p2p_tx_action_frame(struct brcmf_p2p_info *p2p,
 exit:
 	return err;
 }
-
 
 /**
  * brcmf_p2p_pub_af_tx() - public action frame tx routine.
@@ -1904,7 +1890,6 @@ s32 brcmf_p2p_notify_rx_mgmt_p2p_probereq(struct brcmf_if *ifp,
 
 	return 0;
 }
-
 
 /**
  * brcmf_p2p_get_current_chanspec() - Get current operation channel.
@@ -2396,4 +2381,3 @@ void brcmf_p2p_detach(struct brcmf_p2p_info *p2p)
 	/* just set it all to zero */
 	memset(p2p, 0, sizeof(*p2p));
 }
-

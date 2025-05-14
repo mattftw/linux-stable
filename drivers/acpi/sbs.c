@@ -408,7 +408,6 @@ static int acpi_battery_set_alarm(struct acpi_battery *battery)
 
 	int ret;
 
-
 	if (sbs->manager_present) {
 		ret = acpi_smbus_read(sbs->hc, SMBUS_READ_WORD, ACPI_SBS_MANAGER,
 				0x01, (u8 *)&value);
@@ -443,13 +442,9 @@ static int acpi_ac_get_present(struct acpi_sbs *sbs)
 
 	/*
 	 * The spec requires that bit 4 always be 1. If it's not set, assume
-	 * that the implementation doesn't support an SBS charger.
-	 *
-	 * And on some MacBooks a status of 0xffff is always returned, no
-	 * matter whether the charger is plugged in or not, which is also
-	 * wrong, so ignore the SBS charger for those too.
+	 * that the implementation doesn't support an SBS charger
 	 */
-	if (!((status >> 4) & 0x1) || status == 0xffff)
+	if (!((status >> 4) & 0x1))
 		return -ENODEV;
 
 	sbs->charger_present = (status >> 15) & 0x1;

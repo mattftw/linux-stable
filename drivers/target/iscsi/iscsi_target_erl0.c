@@ -44,8 +44,10 @@ void iscsit_set_dataout_sequence_values(
 	 */
 	if (cmd->unsolicited_data) {
 		cmd->seq_start_offset = cmd->write_data_done;
-		cmd->seq_end_offset = min(cmd->se_cmd.data_length,
-					conn->sess->sess_ops->FirstBurstLength);
+		cmd->seq_end_offset = (cmd->write_data_done +
+			((cmd->se_cmd.data_length >
+			  conn->sess->sess_ops->FirstBurstLength) ?
+			 conn->sess->sess_ops->FirstBurstLength : cmd->se_cmd.data_length));
 		return;
 	}
 
@@ -142,7 +144,6 @@ static int iscsit_dataout_check_unsolicited_sequence(
 	struct iscsi_conn *conn = cmd->conn;
 	struct iscsi_data *hdr = (struct iscsi_data *) buf;
 	u32 payload_length = ntoh24(hdr->dlength);
-
 
 	if ((be32_to_cpu(hdr->offset) < cmd->seq_start_offset) ||
 	   ((be32_to_cpu(hdr->offset) + payload_length) > cmd->seq_end_offset)) {
@@ -928,10 +929,8 @@ static void iscsit_handle_connection_cleanup(struct iscsi_conn *conn)
 	}
 }
 
-void iscsit_take_action_for_connection_exit(struct iscsi_conn *conn, bool *conn_freed)
+void iscsit_take_action_for_connection_exit(struct iscsi_conn *conn)
 {
-	*conn_freed = false;
-
 	spin_lock_bh(&conn->state_lock);
 	if (atomic_read(&conn->connection_exit)) {
 		spin_unlock_bh(&conn->state_lock);
@@ -942,7 +941,6 @@ void iscsit_take_action_for_connection_exit(struct iscsi_conn *conn, bool *conn_
 	if (conn->conn_state == TARG_CONN_STATE_IN_LOGOUT) {
 		spin_unlock_bh(&conn->state_lock);
 		iscsit_close_connection(conn);
-		*conn_freed = true;
 		return;
 	}
 
@@ -956,5 +954,4 @@ void iscsit_take_action_for_connection_exit(struct iscsi_conn *conn, bool *conn_
 	spin_unlock_bh(&conn->state_lock);
 
 	iscsit_handle_connection_cleanup(conn);
-	*conn_freed = true;
 }

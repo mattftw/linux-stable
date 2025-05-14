@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  *  linux/init/main.c
  *
@@ -115,6 +118,13 @@ EXPORT_SYMBOL(system_state);
  */
 #define MAX_INIT_ARGS CONFIG_INIT_ENV_ARG_LIMIT
 #define MAX_INIT_ENVS CONFIG_INIT_ENV_ARG_LIMIT
+
+#ifdef CONFIG_RTK_MEM_REMAP
+extern void rtk_mem_remap_of_init(void);
+#if defined(CONFIG_SYNO_LSP_RTD1619)
+extern void of_reserved_mem_remap(void);
+#endif /* CONFIG_SYNO_LSP_RTD1619 */
+#endif
 
 extern void time_init(void);
 /* Default late time init is NULL. archs can override this later. */
@@ -538,8 +548,6 @@ asmlinkage __visible void __init start_kernel(void)
 	page_alloc_init();
 
 	pr_notice("Kernel command line: %s\n", boot_command_line);
-	/* parameters may set static keys */
-	jump_label_init();
 	parse_early_param();
 	after_dashes = parse_args("Booting kernel",
 				  static_command_line, __start___param,
@@ -548,6 +556,8 @@ asmlinkage __visible void __init start_kernel(void)
 	if (!IS_ERR_OR_NULL(after_dashes))
 		parse_args("Setting init args", after_dashes, NULL, 0, -1, -1,
 			   NULL, set_init_arg);
+
+	jump_label_init();
 
 	/*
 	 * These use large bootmem allocations and must precede
@@ -592,7 +602,18 @@ asmlinkage __visible void __init start_kernel(void)
 	softirq_init();
 	timekeeping_init();
 	time_init();
+#if defined(MY_ABC_HERE)
+#ifdef CONFIG_RTK_MEM_REMAP     //Realtek RTD1295 static ioremap, jamestai20151209
+        rtk_mem_remap_of_init();
+#endif /* CONFIG_RTK_MEM_REMAP */
+#endif /* MY_ABC_HERE */
+#if defined(CONFIG_SYNO_LSP_RTD1619)
+#ifdef CONFIG_RTK_MEM_REMAP
+	of_reserved_mem_remap();
+#endif /* CONFIG_RTK_MEM_REMAP */
+#endif /* CONFIG_SYNO_LSP_RTD1619 */
 	sched_clock_postinit();
+	printk_nmi_init();
 	perf_event_init();
 	profile_init();
 	call_function_init();
@@ -809,7 +830,6 @@ int __init_or_module do_one_initcall(initcall_t fn)
 
 	return ret;
 }
-
 
 extern initcall_t __initcall_start[];
 extern initcall_t __initcall0_start[];

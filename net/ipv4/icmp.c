@@ -565,8 +565,7 @@ relookup_failed:
  *			MUST reply to only the first fragment.
  */
 
-void __icmp_send(struct sk_buff *skb_in, int type, int code, __be32 info,
-		 const struct ip_options *opt)
+void icmp_send(struct sk_buff *skb_in, int type, int code, __be32 info)
 {
 	struct iphdr *iph;
 	int room;
@@ -680,9 +679,8 @@ void __icmp_send(struct sk_buff *skb_in, int type, int code, __be32 info,
 					  iph->tos;
 	mark = IP4_REPLY_MARK(net, skb_in->mark);
 
-	if (__ip_options_echo(&icmp_param->replyopts.opt.opt, skb_in, opt))
+	if (ip_options_echo(&icmp_param->replyopts.opt.opt, skb_in))
 		goto out_unlock;
-
 
 	/*
 	 *	Prepare data for ICMP header.
@@ -732,8 +730,7 @@ out_free:
 	kfree(icmp_param);
 out:;
 }
-EXPORT_SYMBOL(__icmp_send);
-
+EXPORT_SYMBOL(icmp_send);
 
 static void icmp_socket_deliver(struct sk_buff *skb, u32 info)
 {
@@ -869,7 +866,6 @@ out_err:
 	ICMP_INC_STATS_BH(net, ICMP_MIB_INERRORS);
 	return false;
 }
-
 
 /*
  *	Handle ICMP_REDIRECT.
@@ -1019,7 +1015,6 @@ int icmp_rcv(struct sk_buff *skb)
 	 */
 	if (icmph->type > NR_ICMP_TYPES)
 		goto error;
-
 
 	/*
 	 *	Parse the ICMP message

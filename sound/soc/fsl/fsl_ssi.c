@@ -505,7 +505,6 @@ config_done:
 		regmap_update_bits(regs, CCSR_SSI_SCR, vals->scr, vals->scr);
 }
 
-
 static void fsl_ssi_rx_config(struct fsl_ssi_private *ssi_private, bool enable)
 {
 	fsl_ssi_config(ssi_private, enable, &ssi_private->rxtx_reg_val.rx);
@@ -1188,7 +1187,6 @@ static struct snd_soc_dai_driver fsl_ssi_ac97_dai = {
 	.ops = &fsl_ssi_dai_ops,
 };
 
-
 static struct fsl_ssi_private *fsl_ac97_data;
 
 static void fsl_ssi_ac97_write(struct snd_ac97 *ac97, unsigned short reg,
@@ -1408,6 +1406,12 @@ static int fsl_ssi_probe(struct platform_device *pdev)
 				sizeof(fsl_ssi_ac97_dai));
 
 		fsl_ac97_data = ssi_private;
+
+		ret = snd_soc_set_ac97_ops_of_reset(&fsl_ssi_ac97_ops, pdev);
+		if (ret) {
+			dev_err(&pdev->dev, "could not set AC'97 ops\n");
+			return ret;
+		}
 	} else {
 		/* Initialize this copy of the CPU DAI driver structure */
 		memcpy(&ssi_private->cpu_dai_drv, &fsl_ssi_dai_template,
@@ -1465,14 +1469,6 @@ static int fsl_ssi_probe(struct platform_device *pdev)
 		ret = fsl_ssi_imx_probe(pdev, ssi_private, iomem);
 		if (ret)
 			return ret;
-	}
-
-	if (fsl_ssi_is_ac97(ssi_private)) {
-		ret = snd_soc_set_ac97_ops_of_reset(&fsl_ssi_ac97_ops, pdev);
-		if (ret) {
-			dev_err(&pdev->dev, "could not set AC'97 ops\n");
-			goto error_ac97_ops;
-		}
 	}
 
 	ret = devm_snd_soc_register_component(&pdev->dev, &fsl_ssi_component,
@@ -1558,10 +1554,6 @@ error_sound_card:
 	fsl_ssi_debugfs_remove(&ssi_private->dbg_stats);
 
 error_asoc_register:
-	if (fsl_ssi_is_ac97(ssi_private))
-		snd_soc_set_ac97_ops(NULL);
-
-error_ac97_ops:
 	if (ssi_private->soc->imx)
 		fsl_ssi_imx_clean(pdev, ssi_private);
 

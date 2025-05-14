@@ -654,9 +654,6 @@ out:
 	return dev != NULL;
 }
 
-
-
-
 struct rose_route *rose_route_free_lci(unsigned int lci, struct rose_neigh *neigh)
 {
 	struct rose_route *rose_route;
@@ -848,7 +845,6 @@ void rose_link_device_down(struct net_device *dev)
 
 /*
  *	Route a frame to an appropriate AX.25 connection.
- *	A NULL ax25_cb indicates an internally generated frame.
  */
 int rose_route_frame(struct sk_buff *skb, ax25_cb *ax25)
 {
@@ -866,10 +862,6 @@ int rose_route_frame(struct sk_buff *skb, ax25_cb *ax25)
 
 	if (skb->len < ROSE_MIN_LEN)
 		return res;
-
-	if (!ax25)
-		return rose_loopback_queue(skb, NULL);
-
 	frametype = skb->data[2];
 	lci = ((skb->data[0] << 8) & 0xF00) + ((skb->data[1] << 0) & 0x0FF);
 	if (frametype == ROSE_CALL_REQUEST &&
@@ -1229,7 +1221,6 @@ static int rose_neigh_show(struct seq_file *seq, void *v)
 	return 0;
 }
 
-
 static const struct seq_operations rose_neigh_seqops = {
 	.start = rose_neigh_start,
 	.next = rose_neigh_next,
@@ -1249,7 +1240,6 @@ const struct file_operations rose_neigh_fops = {
 	.llseek = seq_lseek,
 	.release = seq_release,
 };
-
 
 static void *rose_route_start(struct seq_file *seq, loff_t *pos)
 	__acquires(rose_route_list_lock)

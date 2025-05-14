@@ -13,7 +13,6 @@
 
 #include <linux/cpufreq.h>
 #include <linux/interrupt.h>
-#include <linux/leds.h>
 #include <linux/irq.h>
 #include <linux/pm.h>
 #include <linux/gpio.h>
@@ -159,7 +158,6 @@ static void __init zeus_init_irq(void)
 	irq_set_irq_type(gpio_to_irq(ZEUS_ISA_GPIO), IRQ_TYPE_EDGE_RISING);
 	irq_set_chained_handler(gpio_to_irq(ZEUS_ISA_GPIO), zeus_irq_handler);
 }
-
 
 /*
  * Platform devices
@@ -517,7 +515,6 @@ static pxa2xx_audio_ops_t zeus_ac97_info = {
 	.reset_gpio = 95,
 };
 
-
 /*
  * USB host
  */
@@ -558,7 +555,7 @@ static struct pxaohci_platform_data zeus_ohci_platform_data = {
 	.flags		= ENABLE_PORT_ALL | POWER_SENSE_LOW,
 };
 
-static void __init zeus_register_ohci(void)
+static void zeus_register_ohci(void)
 {
 	/* Port 2 is shared between host and client interface. */
 	UP2OCR = UP2OCR_HXOE | UP2OCR_HXS | UP2OCR_DMPDE | UP2OCR_DPPDE;
@@ -929,4 +926,3 @@ MACHINE_START(ARCOM_ZEUS, "Arcom/Eurotech ZEUS")
 	.init_machine	= zeus_init,
 	.restart	= pxa_restart,
 MACHINE_END
-

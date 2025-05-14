@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * mass_storage.c -- Mass Storage USB Gadget
  *
@@ -12,7 +15,6 @@
  * (at your option) any later version.
  */
 
-
 /*
  * The Mass Storage Gadget acts as a USB Mass Storage device,
  * appearing to the host as a disk drive or as a CD-ROM drive.  In
@@ -26,7 +28,6 @@
  * business logic is implemented in f_mass_storage.* file.  Read
  * comments in this file for more detailed description.
  */
-
 
 #include <linux/kernel.h>
 #include <linux/usb/ch9.h>
@@ -95,7 +96,7 @@ static struct fsg_module_parameters mod_data = {
 
 static unsigned int fsg_num_buffers = CONFIG_USB_GADGET_STORAGE_NUM_BUFFERS;
 
-#else
+#else /* MY_DEF_HERE */
 
 /*
  * Number of buffers we will use.
@@ -106,6 +107,19 @@ static unsigned int fsg_num_buffers = CONFIG_USB_GADGET_STORAGE_NUM_BUFFERS;
 #endif /* CONFIG_USB_GADGET_DEBUG_FILES */
 
 FSG_MODULE_PARAMETERS(/* no prefix */, mod_data);
+
+static unsigned long msg_registered;
+static void msg_cleanup(void);
+
+static int msg_thread_exits(struct fsg_common *common)
+{
+#if defined(MY_DEF_HERE)
+//do nothing
+#else /* MY_DEF_HERE */
+	msg_cleanup();
+#endif /* MY_DEF_HERE */
+	return 0;
+}
 
 static int msg_do_config(struct usb_configuration *c)
 {
@@ -140,11 +154,13 @@ static struct usb_configuration msg_config_driver = {
 	.bmAttributes		= USB_CONFIG_ATT_SELFPOWER,
 };
 
-
 /****************************** Gadget Bind ******************************/
 
 static int msg_bind(struct usb_composite_dev *cdev)
 {
+	static const struct fsg_operations ops = {
+		.thread_exits = msg_thread_exits,
+	};
 	struct fsg_opts *opts;
 	struct fsg_config config;
 	int status;
@@ -160,6 +176,8 @@ static int msg_bind(struct usb_composite_dev *cdev)
 	status = fsg_common_set_num_buffers(opts->common, fsg_num_buffers);
 	if (status)
 		goto fail;
+
+	fsg_common_set_ops(opts->common, &ops);
 
 	status = fsg_common_set_cdev(opts->common, cdev, config.can_stall);
 	if (status)
@@ -196,6 +214,7 @@ static int msg_bind(struct usb_composite_dev *cdev)
 	usb_composite_overwrite_options(cdev, &coverwrite);
 	dev_info(&cdev->gadget->dev,
 		 DRIVER_DESC ", version: " DRIVER_VERSION "\n");
+	set_bit(0, &msg_registered);
 	return 0;
 
 fail_otg_desc:
@@ -246,8 +265,9 @@ static int __init msg_init(void)
 }
 module_init(msg_init);
 
-static void __exit msg_cleanup(void)
+static void msg_cleanup(void)
 {
-	usb_composite_unregister(&msg_driver);
+	if (test_and_clear_bit(0, &msg_registered))
+		usb_composite_unregister(&msg_driver);
 }
 module_exit(msg_cleanup);

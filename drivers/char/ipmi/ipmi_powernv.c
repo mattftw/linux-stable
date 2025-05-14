@@ -20,7 +20,6 @@
 
 #include <asm/opal.h>
 
-
 struct ipmi_smi_powernv {
 	u64			interface_id;
 	struct ipmi_device_id	ipmi_id;
@@ -251,9 +250,8 @@ static int ipmi_powernv_probe(struct platform_device *pdev)
 		ipmi->irq = opal_event_request(prop);
 	}
 
-	rc = request_irq(ipmi->irq, ipmi_opal_event, IRQ_TYPE_LEVEL_HIGH,
-			 "opal-ipmi", ipmi);
-	if (rc) {
+	if (request_irq(ipmi->irq, ipmi_opal_event, IRQ_TYPE_LEVEL_HIGH,
+				"opal-ipmi", ipmi)) {
 		dev_warn(dev, "Unable to request irq\n");
 		goto err_dispose;
 	}
@@ -304,7 +302,6 @@ static const struct of_device_id ipmi_powernv_match[] = {
 	{ },
 };
 
-
 static struct platform_driver powernv_ipmi_driver = {
 	.driver = {
 		.name		= "ipmi-powernv",
@@ -313,7 +310,6 @@ static struct platform_driver powernv_ipmi_driver = {
 	.probe	= ipmi_powernv_probe,
 	.remove	= ipmi_powernv_remove,
 };
-
 
 module_platform_driver(powernv_ipmi_driver);
 

@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * Driver for (BCM4706)? GBit MAC core on BCMA bus.
  *
@@ -255,16 +258,15 @@ static void bgmac_dma_tx_free(struct bgmac *bgmac, struct bgmac_dma_ring *ring)
 	while (ring->start != ring->end) {
 		int slot_idx = ring->start % BGMAC_TX_RING_SLOTS;
 		struct bgmac_slot_info *slot = &ring->slots[slot_idx];
-		u32 ctl0, ctl1;
+		u32 ctl1;
 		int len;
 
 		if (slot_idx == empty_slot)
 			break;
 
-		ctl0 = le32_to_cpu(ring->cpu_base[slot_idx].ctl0);
 		ctl1 = le32_to_cpu(ring->cpu_base[slot_idx].ctl1);
 		len = ctl1 & BGMAC_DESC_CTL1_LEN;
-		if (ctl0 & BGMAC_DESC_CTL0_SOF)
+		if (ctl1 & BGMAC_DESC_CTL0_SOF)
 			/* Unmap no longer used buffer */
 			dma_unmap_single(dma_dev, slot->dma_addr, len,
 					 DMA_TO_DEVICE);
@@ -470,11 +472,6 @@ static int bgmac_dma_rx_read(struct bgmac *bgmac, struct bgmac_dma_ring *ring,
 			len -= ETH_FCS_LEN;
 
 			skb = build_skb(buf, BGMAC_RX_ALLOC_SIZE);
-			if (unlikely(!skb)) {
-				bgmac_err(bgmac, "build_skb failed\n");
-				put_page(virt_to_head_page(buf));
-				break;
-			}
 			skb_put(skb, BGMAC_RX_FRAME_OFFSET +
 				BGMAC_RX_BUF_OFFSET + len);
 			skb_pull(skb, BGMAC_RX_FRAME_OFFSET +
@@ -531,8 +528,7 @@ static void bgmac_dma_tx_ring_free(struct bgmac *bgmac,
 	int i;
 
 	for (i = 0; i < BGMAC_TX_RING_SLOTS; i++) {
-		u32 ctl1 = le32_to_cpu(dma_desc[i].ctl1);
-		unsigned int len = ctl1 & BGMAC_DESC_CTL1_LEN;
+		int len = dma_desc[i].ctl1 & BGMAC_DESC_CTL1_LEN;
 
 		slot = &ring->slots[i];
 		dev_kfree_skb(slot->skb);
@@ -1309,8 +1305,7 @@ static int bgmac_open(struct net_device *net_dev)
 
 	phy_start(bgmac->phy_dev);
 
-	netif_start_queue(net_dev);
-
+	netif_carrier_on(net_dev);
 	return 0;
 }
 
@@ -1482,7 +1477,11 @@ static int bgmac_mii_register(struct bgmac *bgmac)
 	struct mii_bus *mii_bus;
 	struct phy_device *phy_dev;
 	char bus_id[MII_BUS_ID_SIZE + 3];
+#if defined(MY_DEF_HERE)
+	int err = 0;
+#else /* MY_DEF_HERE */
 	int i, err = 0;
+#endif /* MY_DEF_HERE */
 
 	if (ci->id == BCMA_CHIP_ID_BCM4707 ||
 	    ci->id == BCMA_CHIP_ID_BCM53018)
@@ -1501,6 +1500,9 @@ static int bgmac_mii_register(struct bgmac *bgmac)
 	mii_bus->parent = &bgmac->core->dev;
 	mii_bus->phy_mask = ~(1 << bgmac->phyaddr);
 
+#if defined(MY_DEF_HERE)
+//do nothing
+#else /* MY_DEF_HERE */
 	mii_bus->irq = kmalloc_array(PHY_MAX_ADDR, sizeof(int), GFP_KERNEL);
 	if (!mii_bus->irq) {
 		err = -ENOMEM;
@@ -1509,10 +1511,15 @@ static int bgmac_mii_register(struct bgmac *bgmac)
 	for (i = 0; i < PHY_MAX_ADDR; i++)
 		mii_bus->irq[i] = PHY_POLL;
 
+#endif /* MY_DEF_HERE */
 	err = mdiobus_register(mii_bus);
 	if (err) {
 		bgmac_err(bgmac, "Registration of mii bus failed\n");
+#if defined(MY_DEF_HERE)
+		goto err_free_bus;
+#else /* MY_DEF_HERE */
 		goto err_free_irq;
+#endif /* MY_DEF_HERE */
 	}
 
 	bgmac->mii_bus = mii_bus;
@@ -1533,8 +1540,12 @@ static int bgmac_mii_register(struct bgmac *bgmac)
 
 err_unregister_bus:
 	mdiobus_unregister(mii_bus);
+#if defined(MY_DEF_HERE)
+//do nothing
+#else /* MY_DEF_HERE */
 err_free_irq:
 	kfree(mii_bus->irq);
+#endif /* MY_DEF_HERE */
 err_free_bus:
 	mdiobus_free(mii_bus);
 	return err;
@@ -1545,7 +1556,11 @@ static void bgmac_mii_unregister(struct bgmac *bgmac)
 	struct mii_bus *mii_bus = bgmac->mii_bus;
 
 	mdiobus_unregister(mii_bus);
+#if defined(MY_DEF_HERE)
+//do nothing
+#else /* MY_DEF_HERE */
 	kfree(mii_bus->irq);
+#endif /* MY_DEF_HERE */
 	mdiobus_free(mii_bus);
 }
 
@@ -1583,11 +1598,6 @@ static int bgmac_probe(struct bcma_device *core)
 		eth_random_addr(mac);
 		dev_warn(&core->dev, "Using random MAC: %pM\n", mac);
 	}
-
-	/* This (reset &) enable is not preset in specs or reference driver but
-	 * Broadcom does it in arch PCI code when enabling fake PCI device.
-	 */
-	bcma_core_enable(core, 0);
 
 	/* Allocation and references */
 	net_dev = alloc_etherdev(sizeof(*bgmac));

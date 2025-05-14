@@ -46,7 +46,6 @@
 #define VTOP_INVALID               -1
 #define VTOP_RETRY                 -2
 
-
 /*
  * Test if a physical address is a valid GRU GSEG address
  */
@@ -199,7 +198,7 @@ static int non_atomic_pte_lookup(struct vm_area_struct *vma,
 	*pageshift = PAGE_SHIFT;
 #endif
 	if (get_user_pages
-	    (current, current->mm, vaddr, 1, write ? FOLL_WRITE : 0, &page, NULL) <= 0)
+	    (current, current->mm, vaddr, 1, write, 0, &page, NULL) <= 0)
 		return -EFAULT;
 	*paddr = page_to_phys(page);
 	put_page(page);
@@ -294,7 +293,6 @@ inval:
 upm:
 	return VTOP_RETRY;
 }
-
 
 /*
  * Flush a CBE from cache. The CBE is clean in the cache. Dirty the
@@ -617,7 +615,6 @@ irqreturn_t gru_intr_mblade(int irq, void *dev_id)
 	}
 	return IRQ_HANDLED;
 }
-
 
 static int gru_user_dropin(struct gru_thread_state *gts,
 			   struct gru_tlb_fault_handle *tfh,

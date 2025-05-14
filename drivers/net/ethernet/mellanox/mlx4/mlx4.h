@@ -113,7 +113,6 @@ enum mlx4_mpt_state {
 #define MLX4_COMM_OFFLINE_TIME_OUT 30000
 #define MLX4_COMM_CMD_NA_OP    0x0
 
-
 enum {
 	MLX4_COMM_CMD_RESET,
 	MLX4_COMM_CMD_VHCR0,
@@ -537,8 +536,8 @@ struct slave_list {
 struct resource_allocator {
 	spinlock_t alloc_lock; /* protect quotas */
 	union {
-		unsigned int res_reserved;
-		unsigned int res_port_rsvd[MLX4_MAX_PORTS];
+		int res_reserved;
+		int res_port_rsvd[MLX4_MAX_PORTS];
 	};
 	union {
 		int res_free;
@@ -653,7 +652,6 @@ struct mlx4_vf_immed_vlan_work {
 	u16			vlan_id;
 	u16			orig_vlan_id;
 };
-
 
 struct mlx4_uar_table {
 	struct mlx4_bitmap	bitmap;
@@ -772,7 +770,6 @@ enum {
 	MCAST_DIRECT		= 1,
 	MCAST_DEFAULT		= 2
 };
-
 
 struct mlx4_set_port_general_context {
 	u16 reserved1;
@@ -1205,7 +1202,6 @@ void mlx4_qp_event(struct mlx4_dev *dev, u32 qpn, int event_type);
 void mlx4_srq_event(struct mlx4_dev *dev, u32 srqn, int event_type);
 
 void mlx4_enter_error_state(struct mlx4_dev_persistent *persist);
-int mlx4_comm_internal_err(u32 slave_read);
 
 int mlx4_SENSE_PORT(struct mlx4_dev *dev, int port,
 		    enum mlx4_port_type *type);

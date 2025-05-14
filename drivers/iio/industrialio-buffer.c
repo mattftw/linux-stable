@@ -174,7 +174,7 @@ unsigned int iio_buffer_poll(struct file *filp,
 	struct iio_dev *indio_dev = filp->private_data;
 	struct iio_buffer *rb = indio_dev->buffer;
 
-	if (!indio_dev->info || rb == NULL)
+	if (!indio_dev->info)
 		return 0;
 
 	poll_wait(filp, &rb->pollq, wait);
@@ -1212,7 +1212,6 @@ static void iio_buffer_demux_free(struct iio_buffer *buffer)
 		kfree(p);
 	}
 }
-
 
 int iio_push_to_buffers(struct iio_dev *indio_dev, const void *data)
 {

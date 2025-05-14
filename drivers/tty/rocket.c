@@ -285,7 +285,6 @@ static void rp_cleanup_module(void);
 module_init(rp_init);
 module_exit(rp_cleanup_module);
 
-
 MODULE_LICENSE("Dual BSD/GPL");
 
 /*************************************************************************/
@@ -305,7 +304,6 @@ static inline int rocket_paranoia_check(struct r_port *info,
 #endif
 	return 0;
 }
-
 
 /*  Serial port receive data function.  Called (from timer poll) when an AIOPIC signals 
  *  that receive data is present on a serial port.  Pulls data from FIFO, moves it into the 
@@ -1915,7 +1913,7 @@ static __init int register_PCI(int i, struct pci_dev *dev)
 	ByteIO_t UPCIRingInd = 0;
 
 	if (!dev || !pci_match_id(rocket_pci_ids, dev) ||
-	    pci_enable_device(dev) || i >= NUM_BOARDS)
+	    pci_enable_device(dev))
 		return 0;
 
 	rcktpt_io_addr[i] = pci_resource_start(dev, 0);
@@ -2475,7 +2473,6 @@ err_tty:
 err:
 	return ret;
 }
-
 
 static void rp_cleanup_module(void)
 {

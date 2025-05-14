@@ -31,7 +31,6 @@ const struct dentry_operations affs_intl_dentry_operations = {
 	.d_compare	= affs_intl_compare_dentry,
 };
 
-
 /* Simple toupper() for DOS\1 */
 
 static int
@@ -224,10 +223,9 @@ affs_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
 
 	affs_lock_dir(dir);
 	bh = affs_find_entry(dir, dentry);
-	if (IS_ERR(bh)) {
-		affs_unlock_dir(dir);
+	affs_unlock_dir(dir);
+	if (IS_ERR(bh))
 		return ERR_CAST(bh);
-	}
 	if (bh) {
 		u32 ino = bh->b_blocknr;
 
@@ -241,13 +239,10 @@ affs_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
 		}
 		affs_brelse(bh);
 		inode = affs_iget(sb, ino);
-		if (IS_ERR(inode)) {
-			affs_unlock_dir(dir);
+		if (IS_ERR(inode))
 			return ERR_CAST(inode);
-		}
 	}
 	d_add(dentry, inode);
-	affs_unlock_dir(dir);
 	return NULL;
 }
 

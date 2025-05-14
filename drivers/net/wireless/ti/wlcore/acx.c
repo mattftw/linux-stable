@@ -489,7 +489,6 @@ out:
 	return ret;
 }
 
-
 int wl1271_acx_sg_enable(struct wl1271 *wl, bool enable)
 {
 	struct acx_bt_wlan_coex *pta;
@@ -1345,7 +1344,6 @@ out:
 }
 EXPORT_SYMBOL_GPL(wl1271_acx_set_ht_capabilities);
 
-
 int wl1271_acx_set_ht_information(struct wl1271 *wl,
 				   struct wl12xx_vif *wlvif,
 				   u16 ht_operation_mode)
@@ -1419,8 +1417,7 @@ out:
 
 /* setup BA session receiver setting in the FW. */
 int wl12xx_acx_set_ba_receiver_session(struct wl1271 *wl, u8 tid_index,
-				       u16 ssn, bool enable, u8 peer_hlid,
-				       u8 win_size)
+				       u16 ssn, bool enable, u8 peer_hlid)
 {
 	struct wl1271_acx_ba_receiver_setup *acx;
 	int ret;
@@ -1436,7 +1433,7 @@ int wl12xx_acx_set_ba_receiver_session(struct wl1271 *wl, u8 tid_index,
 	acx->hlid = peer_hlid;
 	acx->tid = tid_index;
 	acx->enable = enable;
-	acx->win_size =	win_size;
+	acx->win_size = wl->conf.ht.rx_ba_win_size;
 	acx->ssn = ssn;
 
 	ret = wlcore_cmd_configure_failsafe(wl, ACX_BA_SESSION_RX_SETUP, acx,

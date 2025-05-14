@@ -40,7 +40,6 @@
 #include <media/videobuf2-v4l2.h>
 #include <media/videobuf2-dma-contig.h>
 
-
 #define DRV_NAME "rcar_jpu"
 
 /*
@@ -1278,7 +1277,7 @@ static int jpu_open(struct file *file)
 		/* ...issue software reset */
 		ret = jpu_reset(jpu);
 		if (ret)
-			goto jpu_reset_rollback;
+			goto device_prepare_rollback;
 	}
 
 	jpu->ref_count++;
@@ -1286,8 +1285,6 @@ static int jpu_open(struct file *file)
 	mutex_unlock(&jpu->mutex);
 	return 0;
 
-jpu_reset_rollback:
-	clk_disable_unprepare(jpu->clk);
 device_prepare_rollback:
 	mutex_unlock(&jpu->mutex);
 v4l_prepare_rollback:

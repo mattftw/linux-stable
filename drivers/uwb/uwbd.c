@@ -134,8 +134,6 @@ static struct uwbd_event uwbd_urc_events[] = {
 	},
 };
 
-
-
 struct uwbd_evt_type_handler {
 	const char *name;
 	struct uwbd_event *uwbd_events;
@@ -299,26 +297,21 @@ static int uwbd(void *param)
 	return 0;
 }
 
-
 /** Start the UWB daemon */
 void uwbd_start(struct uwb_rc *rc)
 {
-	struct task_struct *task = kthread_run(uwbd, rc, "uwbd");
-	if (IS_ERR(task)) {
-		rc->uwbd.task = NULL;
+	rc->uwbd.task = kthread_run(uwbd, rc, "uwbd");
+	if (rc->uwbd.task == NULL)
 		printk(KERN_ERR "UWB: Cannot start management daemon; "
 		       "UWB won't work\n");
-	} else {
-		rc->uwbd.task = task;
+	else
 		rc->uwbd.pid = rc->uwbd.task->pid;
-	}
 }
 
 /* Stop the UWB daemon and free any unprocessed events */
 void uwbd_stop(struct uwb_rc *rc)
 {
-	if (rc->uwbd.task)
-		kthread_stop(rc->uwbd.task);
+	kthread_stop(rc->uwbd.task);
 	uwbd_flush(rc);
 }
 

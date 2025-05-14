@@ -685,7 +685,6 @@ static int do_exit(void)
 	return 0;
 }
 
-
 static void search_conf(void)
 {
 	struct symbol **sym_arr;
@@ -728,7 +727,6 @@ again:
 	str_free(&res);
 	str_free(&title);
 }
-
 
 static void build_conf(struct menu *menu)
 {
@@ -1046,7 +1044,7 @@ static int do_match(int key, struct match_state *state, int *ans)
 		state->match_direction = FIND_NEXT_MATCH_UP;
 		*ans = get_mext_match(state->pattern,
 				state->match_direction);
-	} else if (key == KEY_BACKSPACE || key == 8 || key == 127) {
+	} else if (key == KEY_BACKSPACE || key == 127) {
 		state->pattern[strlen(state->pattern)-1] = '\0';
 		adj_match_dir(&state->match_direction);
 	} else

@@ -7,7 +7,6 @@
 #include <linux/kthread.h>
 #include <linux/net.h>
 #include <linux/nsproxy.h>
-#include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/socket.h>
 #include <linux/string.h>
@@ -467,7 +466,6 @@ static void set_sock_callbacks(struct socket *sock,
 	sk->sk_state_change = ceph_sock_state_change;
 }
 
-
 /*
  * socket helpers
  */
@@ -479,16 +477,11 @@ static int ceph_tcp_connect(struct ceph_connection *con)
 {
 	struct sockaddr_storage *paddr = &con->peer_addr.in_addr;
 	struct socket *sock;
-	unsigned int noio_flag;
 	int ret;
 
 	BUG_ON(con->sock);
-
-	/* sock_create_kern() allocates with GFP_KERNEL */
-	noio_flag = memalloc_noio_save();
 	ret = sock_create_kern(read_pnet(&con->msgr->net), paddr->ss_family,
 			       SOCK_STREAM, IPPROTO_TCP, &sock);
-	memalloc_noio_restore(noio_flag);
 	if (ret)
 		return ret;
 	sock->sk->sk_allocation = GFP_NOFS;
@@ -759,7 +752,6 @@ void ceph_con_init(struct ceph_connection *con, void *private,
 	con->state = CON_STATE_CLOSED;
 }
 EXPORT_SYMBOL(ceph_con_init);
-
 
 /*
  * We maintain a global counter to order connection attempts.  Get
@@ -1688,7 +1680,6 @@ static int prepare_read_message(struct ceph_connection *con)
 	return 0;
 }
 
-
 static int read_partial(struct ceph_connection *con,
 			int end, int size, void *object)
 {
@@ -1702,7 +1693,6 @@ static int read_partial(struct ceph_connection *con,
 	}
 	return 1;
 }
-
 
 /*
  * Read all or part of the connect-side handshake on a new connection
@@ -2049,19 +2039,15 @@ static int process_connect(struct ceph_connection *con)
 	dout("process_connect on %p tag %d\n", con, (int)con->in_tag);
 
 	if (con->auth_reply_buf) {
-		int len = le32_to_cpu(con->in_reply.authorizer_len);
-
 		/*
 		 * Any connection that defines ->get_authorizer()
 		 * should also define ->verify_authorizer_reply().
 		 * See get_connect_authorizer().
 		 */
-		if (len) {
-			ret = con->ops->verify_authorizer_reply(con, 0);
-			if (ret < 0) {
-				con->error_msg = "bad authorize reply";
-				return ret;
-			}
+		ret = con->ops->verify_authorizer_reply(con, 0);
+		if (ret < 0) {
+			con->error_msg = "bad authorize reply";
+			return ret;
 		}
 	}
 
@@ -2221,7 +2207,6 @@ static int process_connect(struct ceph_connection *con)
 	return 0;
 }
 
-
 /*
  * read (part of) an ack
  */
@@ -2255,7 +2240,6 @@ static void process_ack(struct ceph_connection *con)
 	}
 	prepare_read_tag(con);
 }
-
 
 static int read_partial_message_section(struct ceph_connection *con,
 					struct kvec *section,
@@ -2535,11 +2519,6 @@ static int try_write(struct ceph_connection *con)
 	int ret = 1;
 
 	dout("try_write start %p state %lu\n", con, con->state);
-	if (con->state != CON_STATE_PREOPEN &&
-	    con->state != CON_STATE_CONNECTING &&
-	    con->state != CON_STATE_NEGOTIATING &&
-	    con->state != CON_STATE_OPEN)
-		return 0;
 
 more:
 	dout("try_write out_kvec_bytes %d\n", con->out_kvec_bytes);
@@ -2565,8 +2544,6 @@ more:
 	}
 
 more_kvec:
-	BUG_ON(!con->sock);
-
 	/* kvec data queued? */
 	if (con->out_kvec_left) {
 		ret = write_partial_kvec(con);
@@ -2624,8 +2601,6 @@ out:
 	dout("try_write done on %p ret %d\n", con, ret);
 	return ret;
 }
-
-
 
 /*
  * Read what we can from the socket.
@@ -2779,7 +2754,6 @@ bad_tag:
 	ret = -1;
 	goto out;
 }
-
 
 /*
  * Atomically queue work on a connection after the specified delay.
@@ -2999,8 +2973,6 @@ static void con_fault(struct ceph_connection *con)
 	}
 }
 
-
-
 /*
  * initialize a new messenger instance
  */
@@ -3185,10 +3157,9 @@ void ceph_con_keepalive(struct ceph_connection *con)
 	dout("con_keepalive %p\n", con);
 	mutex_lock(&con->mutex);
 	clear_standby(con);
-	con_flag_set(con, CON_FLAG_KEEPALIVE_PENDING);
 	mutex_unlock(&con->mutex);
-
-	if (con_flag_test_and_set(con, CON_FLAG_WRITE_PENDING) == 0)
+	if (con_flag_test_and_set(con, CON_FLAG_KEEPALIVE_PENDING) == 0 &&
+	    con_flag_test_and_set(con, CON_FLAG_WRITE_PENDING) == 0)
 		queue_con(con);
 }
 EXPORT_SYMBOL(ceph_con_keepalive);
@@ -3425,7 +3396,6 @@ static int ceph_con_in_msg_alloc(struct ceph_connection *con, int *skip)
 	return ret;
 }
 
-
 /*
  * Free a generically kmalloc'd message.
  */
@@ -3473,7 +3443,7 @@ static void ceph_msg_release(struct kref *kref)
 struct ceph_msg *ceph_msg_get(struct ceph_msg *msg)
 {
 	dout("%s %p (was %d)\n", __func__, msg,
-	     atomic_read(&msg->kref.refcount));
+	     kref_read(&msg->kref));
 	kref_get(&msg->kref);
 	return msg;
 }
@@ -3482,7 +3452,7 @@ EXPORT_SYMBOL(ceph_msg_get);
 void ceph_msg_put(struct ceph_msg *msg)
 {
 	dout("%s %p (was %d)\n", __func__, msg,
-	     atomic_read(&msg->kref.refcount));
+	     kref_read(&msg->kref));
 	kref_put(&msg->kref, ceph_msg_release);
 }
 EXPORT_SYMBOL(ceph_msg_put);

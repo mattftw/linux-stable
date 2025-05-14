@@ -116,7 +116,6 @@ static int acpi_processor_get_platform_limit(struct acpi_processor *pr)
 	acpi_status status = 0;
 	unsigned long long ppc = 0;
 
-
 	if (!pr)
 		return -EINVAL;
 
@@ -161,7 +160,7 @@ int acpi_processor_ppc_has_changed(struct acpi_processor *pr, int event_flag)
 {
 	int ret;
 
-	if (ignore_ppc || !pr->performance) {
+	if (ignore_ppc) {
 		/*
 		 * Only when it is notification event, the _OST object
 		 * will be evaluated. Otherwise it is skipped.
@@ -227,7 +226,6 @@ static int acpi_processor_get_performance_control(struct acpi_processor *pr)
 	struct acpi_buffer buffer = { ACPI_ALLOCATE_BUFFER, NULL };
 	union acpi_object *pct = NULL;
 	union acpi_object obj = { 0 };
-
 
 	status = acpi_evaluate_object(pr->handle, "_PCT", NULL, &buffer);
 	if (ACPI_FAILURE(status)) {
@@ -327,7 +325,6 @@ static int acpi_processor_get_performance_states(struct acpi_processor *pr)
 	union acpi_object *pss = NULL;
 	int i;
 	int last_invalid = -1;
-
 
 	status = acpi_evaluate_object(pr->handle, "_PSS", NULL, &buffer);
 	if (ACPI_FAILURE(status)) {
@@ -469,7 +466,6 @@ int acpi_processor_notify_smm(struct module *calling_module)
 {
 	acpi_status status;
 	static int is_done = 0;
-
 
 	if (!(acpi_processor_ppc_status & PPC_REGISTERED))
 		return -EBUSY;

@@ -547,10 +547,8 @@ int snd_hda_attach_pcm_stream(struct hda_bus *_bus, struct hda_codec *codec,
 		return err;
 	strlcpy(pcm->name, cpcm->name, sizeof(pcm->name));
 	apcm = kzalloc(sizeof(*apcm), GFP_KERNEL);
-	if (apcm == NULL) {
-		snd_device_free(chip->card, pcm);
+	if (apcm == NULL)
 		return -ENOMEM;
-	}
 	apcm->chip = chip;
 	apcm->pcm = pcm;
 	apcm->codec = codec;
@@ -634,7 +632,6 @@ static int azx_rirb_get_response(struct hdac_bus *bus, unsigned int addr,
 		chip->poll_count++;
 		goto again;
 	}
-
 
 	if (!chip->polling_mode) {
 		dev_warn(chip->card->dev,
@@ -1130,12 +1127,8 @@ EXPORT_SYMBOL_GPL(azx_probe_codecs);
 /* configure each codec instance */
 int azx_codec_configure(struct azx *chip)
 {
-	struct hda_codec *codec, *next;
-
-	/* use _safe version here since snd_hda_codec_configure() deregisters
-	 * the device upon error and deletes itself from the bus list.
-	 */
-	list_for_each_codec_safe(codec, next, &chip->bus) {
+	struct hda_codec *codec;
+	list_for_each_codec(codec, &chip->bus) {
 		snd_hda_codec_configure(codec);
 	}
 	return 0;

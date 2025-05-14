@@ -250,7 +250,6 @@ static bool ath_complete_reset(struct ath_softc *sc, bool start)
 			ath9k_hw_settsf64(ah, sc->cur_chan->tsf_val + offset);
 		}
 
-
 		if (!test_bit(ATH_OP_BEACONS, &common->op_flags))
 			goto work;
 
@@ -1855,16 +1854,14 @@ static void ath9k_reset_tsf(struct ieee80211_hw *hw, struct ieee80211_vif *vif)
 
 static int ath9k_ampdu_action(struct ieee80211_hw *hw,
 			      struct ieee80211_vif *vif,
-			      struct ieee80211_ampdu_params *params)
+			      enum ieee80211_ampdu_mlme_action action,
+			      struct ieee80211_sta *sta,
+			      u16 tid, u16 *ssn, u8 buf_size, bool amsdu)
 {
 	struct ath_softc *sc = hw->priv;
 	struct ath_common *common = ath9k_hw_common(sc->sc_ah);
 	bool flush = false;
 	int ret = 0;
-	struct ieee80211_sta *sta = params->sta;
-	enum ieee80211_ampdu_mlme_action action = params->action;
-	u16 tid = params->tid;
-	u16 *ssn = &params->ssn;
 
 	mutex_lock(&sc->mutex);
 
@@ -2404,7 +2401,6 @@ static int ath9k_add_chanctx(struct ieee80211_hw *hw,
 	mutex_unlock(&sc->mutex);
 	return -ENOSPC;
 }
-
 
 static void ath9k_remove_chanctx(struct ieee80211_hw *hw,
 				 struct ieee80211_chanctx_conf *conf)

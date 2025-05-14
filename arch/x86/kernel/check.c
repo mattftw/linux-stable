@@ -30,11 +30,6 @@ static __init int set_corruption_check(char *arg)
 	ssize_t ret;
 	unsigned long val;
 
-	if (!arg) {
-		pr_err("memory_corruption_check config string not provided\n");
-		return -EINVAL;
-	}
-
 	ret = kstrtoul(arg, 10, &val);
 	if (ret)
 		return ret;
@@ -48,11 +43,6 @@ static __init int set_corruption_check_period(char *arg)
 {
 	ssize_t ret;
 	unsigned long val;
-
-	if (!arg) {
-		pr_err("memory_corruption_check_period config string not provided\n");
-		return -EINVAL;
-	}
 
 	ret = kstrtoul(arg, 10, &val);
 	if (ret)
@@ -68,11 +58,6 @@ static __init int set_corruption_check_size(char *arg)
 	char *end;
 	unsigned size;
 
-	if (!arg) {
-		pr_err("memory_corruption_check_size config string not provided\n");
-		return -EINVAL;
-	}
-
 	size = memparse(arg, &end);
 
 	if (*end == '\0')
@@ -81,7 +66,6 @@ static __init int set_corruption_check_size(char *arg)
 	return (size == corruption_check_size) ? 0 : -EINVAL;
 }
 early_param("memory_corruption_check_size", set_corruption_check_size);
-
 
 void __init setup_bios_corruption_check(void)
 {
@@ -129,7 +113,6 @@ void __init setup_bios_corruption_check(void)
 	if (num_scan_areas)
 		printk(KERN_INFO "Scanning %d areas for low memory corruption\n", num_scan_areas);
 }
-
 
 void check_for_bios_corruption(void)
 {
@@ -179,4 +162,3 @@ static int start_periodic_check_for_corruption(void)
 	return 0;
 }
 device_initcall(start_periodic_check_for_corruption);
-

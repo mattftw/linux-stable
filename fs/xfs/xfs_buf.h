@@ -83,7 +83,6 @@ typedef unsigned int xfs_buf_flags_t;
 	{ _XBF_DELWRI_Q,	"DELWRI_Q" }, \
 	{ _XBF_COMPOUND,	"COMPOUND" }
 
-
 /*
  * Internal state flags.
  */
@@ -119,7 +118,6 @@ typedef struct xfs_buftarg {
 
 struct xfs_buf;
 typedef void (*xfs_buf_iodone_t)(struct xfs_buf *);
-
 
 #define XB_PAGES	2
 
@@ -304,7 +302,6 @@ extern void xfs_buf_iomove(xfs_buf_t *, size_t, size_t, void *,
 extern void *xfs_buf_offset(struct xfs_buf *, size_t);
 
 /* Delayed Write Buffer Routines */
-extern void xfs_buf_delwri_cancel(struct list_head *);
 extern bool xfs_buf_delwri_queue(struct xfs_buf *, struct list_head *);
 extern int xfs_buf_delwri_submit(struct list_head *);
 extern int xfs_buf_delwri_submit_nowait(struct list_head *);

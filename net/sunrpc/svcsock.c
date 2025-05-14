@@ -57,7 +57,6 @@
 
 #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
 
-
 static struct svc_sock *svc_setup_socket(struct svc_serv *, struct socket *,
 					 int flags);
 static void		svc_udp_data_ready(struct sock *);
@@ -226,7 +225,6 @@ int svc_send_common(struct socket *sock, struct xdr_buf *xdr,
 out:
 	return len;
 }
-
 
 /*
  * Generic sendto routine
@@ -614,7 +612,7 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
 		/* Don't enable netstamp, sunrpc doesn't
 		   need that much accuracy */
 	}
-	sock_write_timestamp(svsk->sk_sk, skb->tstamp);
+	svsk->sk_sk->sk_stamp = skb->tstamp;
 	set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags); /* there may be more data... */
 
 	len  = skb->len - sizeof(struct udphdr);
@@ -1240,7 +1238,7 @@ static int svc_tcp_sendto(struct svc_rqst *rqstp)
 /*
  * Setup response header. TCP has a 4B record length field.
  */
-void svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
+static void svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
 {
 	struct kvec *resv = &rqstp->rq_res.head[0];
 

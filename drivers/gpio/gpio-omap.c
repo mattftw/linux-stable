@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * Support functions for OMAP GPIO
  *
@@ -111,7 +114,6 @@ static void omap_set_gpio_direction(struct gpio_bank *bank, int gpio,
 	writel_relaxed(l, reg);
 	bank->context.oe = l;
 }
-
 
 /* set data out value using dedicate set/clear register */
 static void omap_set_gpio_dataout_reg(struct gpio_bank *bank, unsigned offset,
@@ -872,16 +874,14 @@ static void omap_gpio_unmask_irq(struct irq_data *d)
 	if (trigger)
 		omap_set_gpio_triggering(bank, offset, trigger);
 
-	omap_set_gpio_irqenable(bank, offset, 1);
-
-	/*
-	 * For level-triggered GPIOs, clearing must be done after the source
-	 * is cleared, thus after the handler has run. OMAP4 needs this done
-	 * after enabing the interrupt to clear the wakeup status.
-	 */
-	if (bank->level_mask & BIT(offset))
+	/* For level-triggered GPIOs, the clearing must be done after
+	 * the HW source is cleared, thus after the handler has run */
+	if (bank->level_mask & BIT(offset)) {
+		omap_set_gpio_irqenable(bank, offset, 0);
 		omap_clear_gpio_irqstatus(bank, offset);
+	}
 
+	omap_set_gpio_irqenable(bank, offset, 1);
 	raw_spin_unlock_irqrestore(&bank->lock, flags);
 }
 
@@ -1092,7 +1092,11 @@ static int omap_gpio_chip_init(struct gpio_bank *bank, struct irq_chip *irqc)
 	if (bank->is_mpuio) {
 		bank->chip.label = "mpuio";
 		if (bank->regs->wkup_en)
+#if defined(MY_DEF_HERE)
+			bank->chip.parent = &omap_mpuio_device.dev;
+#else /* MY_DEF_HERE */
 			bank->chip.dev = &omap_mpuio_device.dev;
+#endif /* MY_DEF_HERE */
 		bank->chip.base = OMAP_MPUIO(0);
 	} else {
 		bank->chip.label = "gpio";
@@ -1199,7 +1203,11 @@ static int omap_gpio_probe(struct platform_device *pdev)
 	}
 
 	bank->dev = dev;
+#if defined(MY_DEF_HERE)
+	bank->chip.parent = dev;
+#else /* MY_DEF_HERE */
 	bank->chip.dev = dev;
+#endif /* MY_DEF_HERE */
 	bank->chip.owner = THIS_MODULE;
 	bank->dbck_flag = pdata->dbck_flag;
 	bank->stride = pdata->bank_stride;

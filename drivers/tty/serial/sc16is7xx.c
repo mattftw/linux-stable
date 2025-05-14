@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * SC16IS7xx tty serial driver - Copyright (C) 2014 GridPoint
  * Author: Jon Ringle <jringle@gridpoint.com>
@@ -648,7 +651,7 @@ static void sc16is7xx_handle_tx(struct uart_port *port)
 		uart_write_wakeup(port);
 }
 
-static bool sc16is7xx_port_irq(struct sc16is7xx_port *s, int portno)
+static void sc16is7xx_port_irq(struct sc16is7xx_port *s, int portno)
 {
 	struct uart_port *port = &s->p[portno].port;
 
@@ -657,7 +660,7 @@ static bool sc16is7xx_port_irq(struct sc16is7xx_port *s, int portno)
 
 		iir = sc16is7xx_port_read(port, SC16IS7XX_IIR_REG);
 		if (iir & SC16IS7XX_IIR_NO_INT_BIT)
-			return false;
+			break;
 
 		iir &= SC16IS7XX_IIR_ID_MASK;
 
@@ -685,23 +688,16 @@ static bool sc16is7xx_port_irq(struct sc16is7xx_port *s, int portno)
 					    port->line, iir);
 			break;
 		}
-	} while (0);
-	return true;
+	} while (1);
 }
 
 static void sc16is7xx_ist(struct kthread_work *ws)
 {
 	struct sc16is7xx_port *s = to_sc16is7xx_port(ws, irq_work);
+	int i;
 
-	while (1) {
-		bool keep_polling = false;
-		int i;
-
-		for (i = 0; i < s->devtype->nr_uart; ++i)
-			keep_polling |= sc16is7xx_port_irq(s, i);
-		if (!keep_polling)
-			break;
-	}
+	for (i = 0; i < s->devtype->nr_uart; ++i)
+		sc16is7xx_port_irq(s, i);
 }
 
 static irqreturn_t sc16is7xx_irq(int irq, void *dev_id)
@@ -1187,7 +1183,11 @@ static int sc16is7xx_probe(struct device *dev,
 	if (devtype->nr_gpio) {
 		/* Setup GPIO cotroller */
 		s->gpio.owner		 = THIS_MODULE;
+#if defined(MY_DEF_HERE)
+		s->gpio.parent		 = dev;
+#else /* MY_DEF_HERE */
 		s->gpio.dev		 = dev;
+#endif /* MY_DEF_HERE */
 		s->gpio.label		 = dev_name(dev);
 		s->gpio.direction_input	 = sc16is7xx_gpio_direction_input;
 		s->gpio.get		 = sc16is7xx_gpio_get;
@@ -1448,7 +1448,7 @@ static int __init sc16is7xx_init(void)
 	ret = i2c_add_driver(&sc16is7xx_i2c_uart_driver);
 	if (ret < 0) {
 		pr_err("failed to init sc16is7xx i2c --> %d\n", ret);
-		goto err_i2c;
+		return ret;
 	}
 #endif
 
@@ -1456,17 +1456,9 @@ static int __init sc16is7xx_init(void)
 	ret = spi_register_driver(&sc16is7xx_spi_uart_driver);
 	if (ret < 0) {
 		pr_err("failed to init sc16is7xx spi --> %d\n", ret);
-		goto err_spi;
+		return ret;
 	}
 #endif
-	return ret;
-
-err_spi:
-#ifdef CONFIG_SERIAL_SC16IS7XX_I2C
-	i2c_del_driver(&sc16is7xx_i2c_uart_driver);
-#endif
-err_i2c:
-	uart_unregister_driver(&sc16is7xx_uart);
 	return ret;
 }
 module_init(sc16is7xx_init);

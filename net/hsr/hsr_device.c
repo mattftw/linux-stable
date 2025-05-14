@@ -23,7 +23,6 @@
 #include "hsr_main.h"
 #include "hsr_forward.h"
 
-
 static bool is_admin_up(struct net_device *dev)
 {
 	return dev && (dev->flags & IFF_UP);
@@ -82,7 +81,6 @@ static bool hsr_check_carrier(struct hsr_port *master)
 	return has_carrier;
 }
 
-
 static void hsr_check_announce(struct net_device *hsr_dev,
 			       unsigned char old_operstate)
 {
@@ -93,8 +91,9 @@ static void hsr_check_announce(struct net_device *hsr_dev,
 	if ((hsr_dev->operstate == IF_OPER_UP) && (old_operstate != IF_OPER_UP)) {
 		/* Went up */
 		hsr->announce_count = 0;
-		mod_timer(&hsr->announce_timer,
-			  jiffies + msecs_to_jiffies(HSR_ANNOUNCE_INTERVAL));
+		hsr->announce_timer.expires = jiffies +
+				msecs_to_jiffies(HSR_ANNOUNCE_INTERVAL);
+		add_timer(&hsr->announce_timer);
 	}
 
 	if ((hsr_dev->operstate != IF_OPER_UP) && (old_operstate == IF_OPER_UP))
@@ -134,7 +133,6 @@ int hsr_get_max_mtu(struct hsr_priv *hsr)
 		return 0;
 	return mtu_max - HSR_HLEN;
 }
-
 
 static int hsr_dev_change_mtu(struct net_device *dev, int new_mtu)
 {
@@ -190,13 +188,11 @@ static int hsr_dev_open(struct net_device *dev)
 	return 0;
 }
 
-
 static int hsr_dev_close(struct net_device *dev)
 {
 	/* Nothing to do here. */
 	return 0;
 }
-
 
 static netdev_features_t hsr_features_recompute(struct hsr_priv *hsr,
 						netdev_features_t features)
@@ -230,7 +226,6 @@ static netdev_features_t hsr_fix_features(struct net_device *dev,
 	return hsr_features_recompute(hsr, features);
 }
 
-
 static int hsr_dev_xmit(struct sk_buff *skb, struct net_device *dev)
 {
 	struct hsr_priv *hsr = netdev_priv(dev);
@@ -243,12 +238,10 @@ static int hsr_dev_xmit(struct sk_buff *skb, struct net_device *dev)
 	return NETDEV_TX_OK;
 }
 
-
 static const struct header_ops hsr_header_ops = {
 	.create	 = eth_header,
 	.parse	 = eth_header_parse,
 };
-
 
 /* HSR:2010 supervision frames should be padded so that the whole frame,
  * including headers and FCS, is 64 bytes (without VLAN).
@@ -315,14 +308,12 @@ out:
 	kfree_skb(skb);
 }
 
-
 /* Announce (supervision frame) timer function
  */
 static void hsr_announce(unsigned long data)
 {
 	struct hsr_priv *hsr;
 	struct hsr_port *master;
-	unsigned long interval;
 
 	hsr = (struct hsr_priv *) data;
 
@@ -337,16 +328,17 @@ static void hsr_announce(unsigned long data)
 	}
 
 	if (hsr->announce_count < 3)
-		interval = msecs_to_jiffies(HSR_ANNOUNCE_INTERVAL);
+		hsr->announce_timer.expires = jiffies +
+				msecs_to_jiffies(HSR_ANNOUNCE_INTERVAL);
 	else
-		interval = msecs_to_jiffies(HSR_LIFE_CHECK_INTERVAL);
+		hsr->announce_timer.expires = jiffies +
+				msecs_to_jiffies(HSR_LIFE_CHECK_INTERVAL);
 
 	if (is_admin_up(master->dev))
-		mod_timer(&hsr->announce_timer, jiffies + interval);
+		add_timer(&hsr->announce_timer);
 
 	rcu_read_unlock();
 }
-
 
 /* According to comments in the declaration of struct net_device, this function
  * is "Called from unregister, can be used to call free_netdev". Ok then...
@@ -412,7 +404,6 @@ void hsr_dev_setup(struct net_device *dev)
 	dev->features |= NETIF_F_NETNS_LOCAL;
 }
 
-
 /* Return true if dev is a HSR master; return false otherwise.
  */
 inline bool is_hsr_master(struct net_device *dev)
@@ -475,7 +466,7 @@ int hsr_dev_finalize(struct net_device *hsr_dev, struct net_device *slave[2],
 
 	res = hsr_add_port(hsr, hsr_dev, HSR_PT_MASTER);
 	if (res)
-		goto err_add_port;
+		return res;
 
 	res = register_netdevice(hsr_dev);
 	if (res)
@@ -496,8 +487,6 @@ int hsr_dev_finalize(struct net_device *hsr_dev, struct net_device *slave[2],
 fail:
 	hsr_for_each_port(hsr, port)
 		hsr_del_port(port);
-err_add_port:
-	hsr_del_node(&hsr->self_node_db);
 
 	return res;
 }

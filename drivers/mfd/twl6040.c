@@ -96,17 +96,12 @@ static struct reg_sequence twl6040_patch[] = {
 		TWL6040_I2CSEL | TWL6040_INTCLRMODE | TWL6040_I2CMODE(1) },
 };
 
-
-static bool twl6040_has_vibra(struct device_node *parent)
+static bool twl6040_has_vibra(struct device_node *node)
 {
-	struct device_node *node;
-
-	node = of_get_child_by_name(parent, "vibra");
-	if (node) {
-		of_node_put(node);
+#ifdef CONFIG_OF
+	if (of_find_node_by_name(node, "vibra"))
 		return true;
-	}
-
+#endif
 	return false;
 }
 

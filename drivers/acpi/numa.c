@@ -103,27 +103,25 @@ int acpi_map_pxm_to_node(int pxm)
  */
 int acpi_map_pxm_to_online_node(int pxm)
 {
-	int node, min_node;
+	int node, n, dist, min_dist;
 
 	node = acpi_map_pxm_to_node(pxm);
 
 	if (node == NUMA_NO_NODE)
 		node = 0;
 
-	min_node = node;
 	if (!node_online(node)) {
-		int min_dist = INT_MAX, dist, n;
-
+		min_dist = INT_MAX;
 		for_each_online_node(n) {
 			dist = node_distance(node, n);
 			if (dist < min_dist) {
 				min_dist = dist;
-				min_node = n;
+				node = n;
 			}
 		}
 	}
 
-	return min_node;
+	return node;
 }
 EXPORT_SYMBOL(acpi_map_pxm_to_online_node);
 
@@ -239,7 +237,6 @@ acpi_numa_x2apic_affinity_init(struct acpi_srat_x2apic_cpu_affinity *pa)
 	       "Found unsupported x2apic [0x%08x] SRAT entry\n", pa->apic_id);
 	return;
 }
-
 
 static int __init
 acpi_parse_x2apic_affinity(struct acpi_subtable_header *header,

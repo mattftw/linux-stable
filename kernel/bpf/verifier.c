@@ -574,7 +574,7 @@ static int check_stack_write(struct verifier_env *env,
 			     struct verifier_state *state, int off,
 			     int size, int value_regno, int insn_idx)
 {
-	int i, spi = (MAX_BPF_STACK + off) / BPF_REG_SIZE;
+	int i;
 	/* caller checked that off % size == 0 and -MAX_BPF_STACK <= off < 0,
 	 * so it's aligned access and [off, off + size) are within stack limits
 	 */
@@ -589,7 +589,8 @@ static int check_stack_write(struct verifier_env *env,
 		}
 
 		/* save register state */
-		state->spilled_regs[spi] = state->regs[value_regno];
+		state->spilled_regs[(MAX_BPF_STACK + off) / BPF_REG_SIZE] =
+			state->regs[value_regno];
 
 		for (i = 0; i < BPF_REG_SIZE; i++) {
 			if (state->stack_slot_type[MAX_BPF_STACK + off + i] == STACK_MISC &&
@@ -619,7 +620,8 @@ static int check_stack_write(struct verifier_env *env,
 		}
 	} else {
 		/* regular write of data into stack */
-		state->spilled_regs[spi] = (struct reg_state) {};
+		state->spilled_regs[(MAX_BPF_STACK + off) / BPF_REG_SIZE] =
+			(struct reg_state) {};
 
 		for (i = 0; i < size; i++)
 			state->stack_slot_type[MAX_BPF_STACK + off + i] = STACK_MISC;
@@ -720,7 +722,7 @@ static bool is_ctx_reg(struct verifier_env *env, int regno)
  * if t==write && value_regno==-1, some unknown value is stored into memory
  * if t==read && value_regno==-1, don't care what we read from memory
  */
-static int check_mem_access(struct verifier_env *env, int insn_idx, u32 regno, int off,
+static int check_mem_access(struct verifier_env *env, u32 regno, int off,
 			    int bpf_size, enum bpf_access_type t,
 			    int value_regno)
 {
@@ -785,7 +787,7 @@ static int check_mem_access(struct verifier_env *env, int insn_idx, u32 regno, i
 	return err;
 }
 
-static int check_xadd(struct verifier_env *env, int insn_idx, struct bpf_insn *insn)
+static int check_xadd(struct verifier_env *env, struct bpf_insn *insn)
 {
 	struct reg_state *regs = env->cur_state.regs;
 	int err;
@@ -818,13 +820,13 @@ static int check_xadd(struct verifier_env *env, int insn_idx, struct bpf_insn *i
 	}
 
 	/* check whether atomic_add can read the memory */
-	err = check_mem_access(env, insn_idx, insn->dst_reg, insn->off,
+	err = check_mem_access(env, insn->dst_reg, insn->off,
 			       BPF_SIZE(insn->code), BPF_READ, -1);
 	if (err)
 		return err;
 
 	/* check whether atomic_add can write into the same memory */
-	return check_mem_access(env, insn_idx, insn->dst_reg, insn->off,
+	return check_mem_access(env, insn->dst_reg, insn->off,
 				BPF_SIZE(insn->code), BPF_WRITE, -1);
 }
 
@@ -1160,8 +1162,7 @@ static int check_alu_op(struct verifier_env *env, struct bpf_insn *insn)
 				regs[insn->dst_reg].type = UNKNOWN_VALUE;
 				regs[insn->dst_reg].map_ptr = NULL;
 			}
-		} else if (BPF_CLASS(insn->code) == BPF_ALU64 ||
-			   insn->imm >= 0) {
+		} else {
 			/* case: R = imm
 			 * remember the value we stored into this reg
 			 */
@@ -1863,14 +1864,13 @@ static int do_check(struct verifier_env *env)
 			/* check that memory (src_reg + off) is readable,
 			 * the state of dst_reg will be updated by this func
 			 */
-			err = check_mem_access(env, insn_idx, insn->src_reg, insn->off,
+			err = check_mem_access(env, insn->src_reg, insn->off,
 					       BPF_SIZE(insn->code), BPF_READ,
 					       insn->dst_reg);
 			if (err)
 				return err;
 
-			if (BPF_SIZE(insn->code) != BPF_W &&
-			    BPF_SIZE(insn->code) != BPF_DW) {
+			if (BPF_SIZE(insn->code) != BPF_W) {
 				insn_idx++;
 				continue;
 			}
@@ -1902,7 +1902,7 @@ static int do_check(struct verifier_env *env)
 			enum bpf_reg_type *prev_dst_type, dst_reg_type;
 
 			if (BPF_MODE(insn->code) == BPF_XADD) {
-				err = check_xadd(env, insn_idx, insn);
+				err = check_xadd(env, insn);
 				if (err)
 					return err;
 				insn_idx++;
@@ -1921,7 +1921,7 @@ static int do_check(struct verifier_env *env)
 			dst_reg_type = regs[insn->dst_reg].type;
 
 			/* check that memory (dst_reg + off) is writeable */
-			err = check_mem_access(env, insn_idx, insn->dst_reg, insn->off,
+			err = check_mem_access(env, insn->dst_reg, insn->off,
 					       BPF_SIZE(insn->code), BPF_WRITE,
 					       insn->src_reg);
 			if (err)
@@ -1956,7 +1956,7 @@ static int do_check(struct verifier_env *env)
 			}
 
 			/* check that memory (dst_reg + off) is writeable */
-			err = check_mem_access(env, insn_idx, insn->dst_reg, insn->off,
+			err = check_mem_access(env, insn->dst_reg, insn->off,
 					       BPF_SIZE(insn->code), BPF_WRITE,
 					       -1);
 			if (err)
@@ -2246,11 +2246,9 @@ static int convert_ctx_accesses(struct verifier_env *env)
 	for (i = 0; i < insn_cnt; i++, insn++) {
 		u32 cnt;
 
-		if (insn->code == (BPF_LDX | BPF_MEM | BPF_W) ||
-		    insn->code == (BPF_LDX | BPF_MEM | BPF_DW))
+		if (insn->code == (BPF_LDX | BPF_MEM | BPF_W))
 			type = BPF_READ;
-		else if (insn->code == (BPF_STX | BPF_MEM | BPF_W) ||
-			 insn->code == (BPF_STX | BPF_MEM | BPF_DW))
+		else if (insn->code == (BPF_STX | BPF_MEM | BPF_W))
 			type = BPF_WRITE;
 		else
 			continue;

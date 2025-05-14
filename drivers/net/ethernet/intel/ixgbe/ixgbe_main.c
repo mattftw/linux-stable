@@ -473,7 +473,6 @@ static const struct ixgbe_reg_info ixgbe_reg_info_tbl[] = {
 	{ .name = NULL }
 };
 
-
 /*
  * ixgbe_regdump - register printout routine
  */
@@ -1114,7 +1113,7 @@ static bool ixgbe_clean_tx_irq(struct ixgbe_q_vector *q_vector,
 			break;
 
 		/* prevent any other reads prior to eop_desc */
-		smp_rmb();
+		read_barrier_depends();
 
 		/* if DD is not set pending work has not been completed */
 		if (!(eop_desc->wb.status & cpu_to_le32(IXGBE_TXD_STAT_DD)))
@@ -3723,7 +3722,6 @@ static void ixgbe_configure_virtualization(struct ixgbe_adapter *adapter)
 
 	IXGBE_WRITE_REG(hw, IXGBE_GCR_EXT, gcr_ext);
 
-
 	/* Enable MAC Anti-Spoofing */
 	hw->mac.ops.set_mac_anti_spoofing(hw, (adapter->num_vfs != 0),
 					  adapter->num_vfs);
@@ -4680,7 +4678,6 @@ static int ixgbe_fwd_ring_down(struct net_device *vdev,
 		adapter->tx_ring[txbase + i]->l2_accel_priv = NULL;
 		adapter->tx_ring[txbase + i]->netdev = adapter->netdev;
 	}
-
 
 	return 0;
 }
@@ -5878,8 +5875,7 @@ static int ixgbe_close(struct net_device *netdev)
 
 	ixgbe_ptp_stop(adapter);
 
-	if (netif_device_present(netdev))
-		ixgbe_close_suspend(adapter);
+	ixgbe_close_suspend(adapter);
 
 	ixgbe_fdir_filter_exit(adapter);
 
@@ -5924,12 +5920,14 @@ static int ixgbe_resume(struct pci_dev *pdev)
 	if (!err && netif_running(netdev))
 		err = ixgbe_open(netdev);
 
-
-	if (!err)
-		netif_device_attach(netdev);
 	rtnl_unlock();
 
-	return err;
+	if (err)
+		return err;
+
+	netif_device_attach(netdev);
+
+	return 0;
 }
 #endif /* CONFIG_PM */
 
@@ -5944,14 +5942,14 @@ static int __ixgbe_shutdown(struct pci_dev *pdev, bool *enable_wake)
 	int retval = 0;
 #endif
 
-	rtnl_lock();
 	netif_device_detach(netdev);
 
+	rtnl_lock();
 	if (netif_running(netdev))
 		ixgbe_close_suspend(adapter);
+	rtnl_unlock();
 
 	ixgbe_clear_interrupt_scheme(adapter);
-	rtnl_unlock();
 
 #ifdef CONFIG_PM
 	retval = pci_save_state(pdev);
@@ -6689,7 +6687,6 @@ ixgbe_check_for_bad_vf(struct ixgbe_adapter __always_unused *adapter)
 {
 }
 #endif /* CONFIG_PCI_IOV */
-
 
 /**
  * ixgbe_watchdog_subtask - check and bring link up
@@ -8834,7 +8831,6 @@ skip_sriov:
 				adapter->flags &= ~IXGBE_FLAG_FCOE_CAPABLE;
 		}
 
-
 		fcoe_l = min_t(int, IXGBE_FCRETA_SIZE, num_online_cpus());
 		adapter->ring_feature[RING_F_FCOE].limit = fcoe_l;
 
@@ -9051,7 +9047,6 @@ static void ixgbe_remove(struct pci_dev *pdev)
 	set_bit(__IXGBE_REMOVING, &adapter->state);
 	cancel_work_sync(&adapter->service_task);
 
-
 #ifdef CONFIG_IXGBE_DCA
 	if (adapter->flags & IXGBE_FLAG_DCA_ENABLED) {
 		adapter->flags &= ~IXGBE_FLAG_DCA_ENABLED;
@@ -9220,7 +9215,7 @@ skip_bad_vf_detection:
 	}
 
 	if (netif_running(netdev))
-		ixgbe_close_suspend(adapter);
+		ixgbe_down(adapter);
 
 	if (!test_and_set_bit(__IXGBE_DISABLED, &adapter->state))
 		pci_disable_device(pdev);
@@ -9290,12 +9285,10 @@ static void ixgbe_io_resume(struct pci_dev *pdev)
 	}
 
 #endif
-	rtnl_lock();
 	if (netif_running(netdev))
-		ixgbe_open(netdev);
+		ixgbe_up(adapter);
 
 	netif_device_attach(netdev);
-	rtnl_unlock();
 }
 
 static const struct pci_error_handlers ixgbe_err_handler = {

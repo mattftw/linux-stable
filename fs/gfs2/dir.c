@@ -141,8 +141,6 @@ static int gfs2_dir_write_stuffed(struct gfs2_inode *ip, const char *buf,
 	return size;
 }
 
-
-
 /**
  * gfs2_dir_write_data - Write directory information to the inode
  * @ip: The GFS2 inode
@@ -258,7 +256,6 @@ static int gfs2_dir_read_stuffed(struct gfs2_inode *ip, __be64 *buf,
 
 	return (error) ? error : size;
 }
-
 
 /**
  * gfs2_dir_read_data - Read a data from a directory inode
@@ -760,7 +757,7 @@ static int get_first_leaf(struct gfs2_inode *dip, u32 index,
 	int error;
 
 	error = get_leaf_nr(dip, index, &leaf_no);
-	if (!IS_ERR_VALUE(error))
+	if (!error)
 		error = get_leaf(dip, leaf_no, bh_out);
 
 	return error;
@@ -806,7 +803,6 @@ static struct gfs2_dirent *gfs2_dirent_search(struct inode *inode,
 
 		return error ? ERR_PTR(error) : NULL;
 	}
-
 
 	error = gfs2_meta_inode_buffer(ip, &bh);
 	if (error)
@@ -976,7 +972,7 @@ static int dir_split_leaf(struct inode *inode, const struct qstr *name)
 
 	index = name->hash >> (32 - dip->i_depth);
 	error = get_leaf_nr(dip, index, &leaf_no);
-	if (IS_ERR_VALUE(error))
+	if (error)
 		return error;
 
 	/*  Get the old leaf block  */
@@ -1765,7 +1761,6 @@ int gfs2_dir_add(struct inode *inode, const struct qstr *name,
 	return error;
 }
 
-
 /**
  * gfs2_dir_del - Delete a directory entry
  * @dip: The GFS2 inode
@@ -2092,4 +2087,3 @@ int gfs2_diradd_alloc_required(struct inode *inode, const struct qstr *name,
 	}
 	return 0;
 }
-

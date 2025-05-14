@@ -56,7 +56,6 @@ static void __wake_requests(struct ceph_mds_client *mdsc,
 
 static const struct ceph_connection_operations mds_con_ops;
 
-
 /*
  * mds reply parsing
  */
@@ -342,7 +341,6 @@ static void destroy_reply_info(struct ceph_mds_reply_info_parsed *info)
 		return;
 	free_pages((unsigned long)info->dir_in, get_order(info->dir_buf_size));
 }
-
 
 /*
  * sessions
@@ -832,7 +830,6 @@ random:
 	return mds;
 }
 
-
 /*
  * session messages
  */
@@ -1198,15 +1195,6 @@ static int remove_session_caps_cb(struct inode *inode, struct ceph_cap *cap,
 			list_add(&ci->i_prealloc_cap_flush->list, &to_remove);
 			ci->i_prealloc_cap_flush = NULL;
 		}
-
-               if (drop &&
-                  ci->i_wrbuffer_ref_head == 0 &&
-                  ci->i_wr_ref == 0 &&
-                  ci->i_dirty_caps == 0 &&
-                  ci->i_flushing_caps == 0) {
-                      ceph_put_snap_context(ci->i_head_snapc);
-                      ci->i_head_snapc = NULL;
-               }
 	}
 	spin_unlock(&ci->i_ceph_lock);
 	while (!list_empty(&to_remove)) {
@@ -1344,7 +1332,6 @@ static int send_flushmsg_ack(struct ceph_mds_client *mdsc,
 	return 0;
 }
 
-
 /*
  * Note new cap ttl, and any transition from stale -> not stale (fresh?).
  *
@@ -1409,29 +1396,6 @@ static int __close_session(struct ceph_mds_client *mdsc,
 	return request_close_session(mdsc, session);
 }
 
-static bool drop_negative_children(struct dentry *dentry)
-{
-	struct dentry *child;
-	bool all_negative = true;
-
-	if (!d_is_dir(dentry))
-		goto out;
-
-	spin_lock(&dentry->d_lock);
-	list_for_each_entry(child, &dentry->d_subdirs, d_child) {
-		if (d_really_is_positive(child)) {
-			all_negative = false;
-			break;
-		}
-	}
-	spin_unlock(&dentry->d_lock);
-
-	if (all_negative)
-		shrink_dcache_parent(dentry);
-out:
-	return all_negative;
-}
-
 /*
  * Trim old(er) caps.
  *
@@ -1477,27 +1441,16 @@ static int trim_caps_cb(struct inode *inode, struct ceph_cap *cap, void *arg)
 	if ((used | wanted) & ~oissued & mine)
 		goto out;   /* we need these caps */
 
+	session->s_trim_caps--;
 	if (oissued) {
 		/* we aren't the only cap.. just remove us */
 		__ceph_remove_cap(cap, true);
-		session->s_trim_caps--;
 	} else {
-		struct dentry *dentry;
 		/* try dropping referring dentries */
 		spin_unlock(&ci->i_ceph_lock);
-		dentry = d_find_any_alias(inode);
-		if (dentry && drop_negative_children(dentry)) {
-			int count;
-			dput(dentry);
-			d_prune_aliases(inode);
-			count = atomic_read(&inode->i_count);
-			if (count == 1)
-				session->s_trim_caps--;
-			dout("trim_caps_cb %p cap %p pruned, count now %d\n",
-			     inode, cap, count);
-		} else {
-			dput(dentry);
-		}
+		d_prune_aliases(inode);
+		dout("trim_caps_cb %p cap %p  pruned, count now %d\n",
+		     inode, cap, atomic_read(&inode->i_count));
 		return 0;
 	}
 
@@ -1888,18 +1841,13 @@ static int build_dentry_path(struct dentry *dentry,
 			     int *pfreepath)
 {
 	char *path;
-	struct inode *dir;
 
-	rcu_read_lock();
-	dir = d_inode_rcu(dentry->d_parent);
-	if (dir && ceph_snap(dir) == CEPH_NOSNAP) {
-		*pino = ceph_ino(dir);
-		rcu_read_unlock();
+	if (ceph_snap(d_inode(dentry->d_parent)) == CEPH_NOSNAP) {
+		*pino = ceph_ino(d_inode(dentry->d_parent));
 		*ppath = dentry->d_name.name;
 		*ppathlen = dentry->d_name.len;
 		return 0;
 	}
-	rcu_read_unlock();
 	path = ceph_mdsc_build_path(dentry, ppathlen, pino, 1);
 	if (IS_ERR(path))
 		return PTR_ERR(path);
@@ -2513,7 +2461,6 @@ static void handle_reply(struct ceph_mds_session *session, struct ceph_msg *msg)
 		dout("have to return ESTALE on request %llu", req->r_tid);
 	}
 
-
 	if (head->safe) {
 		req->r_got_safe = true;
 		__unregister_request(mdsc, req);
@@ -2615,8 +2562,6 @@ out:
 	ceph_mdsc_put_request(req);
 	return;
 }
-
-
 
 /*
  * handle mds notification that our request has been forwarded.
@@ -2780,7 +2725,6 @@ bad:
 	return;
 }
 
-
 /*
  * called under session->mutex.
  */
@@ -2942,7 +2886,6 @@ out_dput:
 	return err;
 }
 
-
 /*
  * If an MDS fails and recovers, clients need to reconnect in order to
  * reestablish shared state.  This includes all caps issued through
@@ -3090,7 +3033,6 @@ fail_nopagelist:
 	return;
 }
 
-
 /*
  * compare old and new mdsmaps, kicking requests
  * and closing out old connections as necessary
@@ -3183,8 +3125,6 @@ static void check_new_map(struct ceph_mds_client *mdsc,
 		}
 	}
 }
-
-
 
 /*
  * leases
@@ -3404,8 +3344,6 @@ static void drop_leases(struct ceph_mds_client *mdsc)
 	}
 	mutex_unlock(&mdsc->mutex);
 }
-
-
 
 /*
  * delayed work -- periodically trim expired leases, renew caps with mds
@@ -3775,7 +3713,6 @@ void ceph_mdsc_destroy(struct ceph_fs_client *fsc)
 	dout("mdsc_destroy %p done\n", mdsc);
 }
 
-
 /*
  * handle mds map update.
  */
@@ -3949,7 +3886,6 @@ static struct ceph_auth_handshake *get_authorizer(struct ceph_connection *con,
 
 	return auth;
 }
-
 
 static int verify_authorizer_reply(struct ceph_connection *con, int len)
 {

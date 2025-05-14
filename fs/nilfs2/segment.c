@@ -43,7 +43,6 @@
 #include "ifile.h"
 #include "segbuf.h"
 
-
 /*
  * Segment constructor
  */
@@ -719,7 +718,7 @@ static size_t nilfs_lookup_dirty_data_buffers(struct inode *inode,
 
 		lock_page(page);
 		if (!page_has_buffers(page))
-			create_empty_buffers(page, i_blocksize(inode), 0);
+			create_empty_buffers(page, 1 << inode->i_blkbits, 0);
 		unlock_page(page);
 
 		bh = head = page_buffers(page);
@@ -1478,7 +1477,6 @@ static void nilfs_segctor_truncate_segments(struct nilfs_sc_info *sci,
 	nilfs_truncate_logs(&sci->sc_segbufs, last);
 }
 
-
 static int nilfs_segctor_collect(struct nilfs_sc_info *sci,
 				 struct the_nilfs *nilfs, int mode)
 {
@@ -1945,6 +1943,8 @@ static int nilfs_segctor_collect_dirty_files(struct nilfs_sc_info *sci,
 					      "failed to get inode block.\n");
 				return err;
 			}
+			mark_buffer_dirty(ibh);
+			nilfs_mdt_mark_dirty(ifile);
 			spin_lock(&nilfs->ns_inode_lock);
 			if (likely(!ii->i_bh))
 				ii->i_bh = ibh;
@@ -1952,10 +1952,6 @@ static int nilfs_segctor_collect_dirty_files(struct nilfs_sc_info *sci,
 				brelse(ibh);
 			goto retry;
 		}
-
-		// Always redirty the buffer to avoid race condition
-		mark_buffer_dirty(ii->i_bh);
-		nilfs_mdt_mark_dirty(ifile);
 
 		clear_bit(NILFS_I_QUEUED, &ii->i_state);
 		set_bit(NILFS_I_BUSY, &ii->i_state);
@@ -2567,7 +2563,6 @@ static int nilfs_segctor_thread(void *arg)
 		spin_lock(&sci->sc_state_lock);
 		timeout = 0;
 	}
-
 
 	if (freezing(current)) {
 		spin_unlock(&sci->sc_state_lock);

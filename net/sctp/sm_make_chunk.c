@@ -1292,7 +1292,6 @@ struct sctp_chunk *sctp_make_auth(const struct sctp_association *asoc)
 	return retval;
 }
 
-
 /********************************************************************
  * 2nd Level Abstractions
  ********************************************************************/
@@ -1367,14 +1366,10 @@ static struct sctp_chunk *_sctp_make_chunk(const struct sctp_association *asoc,
 	sctp_chunkhdr_t *chunk_hdr;
 	struct sk_buff *skb;
 	struct sock *sk;
-	int chunklen;
-
-	chunklen = WORD_ROUND(sizeof(*chunk_hdr) + paylen);
-	if (chunklen > SCTP_MAX_CHUNK_LEN)
-		goto nodata;
 
 	/* No need to allocate LL here, as this is only a chunk. */
-	skb = alloc_skb(chunklen, GFP_ATOMIC);
+	skb = alloc_skb(WORD_ROUND(sizeof(sctp_chunkhdr_t) + paylen),
+			GFP_ATOMIC);
 	if (!skb)
 		goto nodata;
 
@@ -1935,7 +1930,6 @@ static int sctp_process_inv_paramlength(const struct sctp_association *asoc,
 	return 0;
 }
 
-
 /* Do not attempt to handle the HOST_NAME parm.  However, do
  * send back an indicator to the peer.
  */
@@ -2474,7 +2468,6 @@ clean_up:
 nomem:
 	return 0;
 }
-
 
 /* Update asoc with the option described in param.
  *

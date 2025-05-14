@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  *	Linux Magic System Request Key Hacks
  *
@@ -80,7 +83,6 @@ static int __init sysrq_always_enabled_setup(char *str)
 
 __setup("sysrq_always_enabled", sysrq_always_enabled_setup);
 
-
 static void sysrq_handle_loglevel(int key)
 {
 	int i;
@@ -133,12 +135,6 @@ static void sysrq_handle_crash(int key)
 {
 	char *killer = NULL;
 
-	/* we need to release the RCU read lock here,
-	 * otherwise we get an annoying
-	 * 'BUG: sleeping function called from invalid context'
-	 * complaint from the kernel before the panic.
-	 */
-	rcu_read_unlock();
 	panic_on_oops = 1;	/* force panic */
 	wmb();
 	*killer = 1;
@@ -163,6 +159,22 @@ static struct sysrq_key_op sysrq_reboot_op = {
 	.enable_mask	= SYSRQ_ENABLE_BOOT,
 };
 
+#ifdef MY_DEF_HERE
+static void sysrq_handle_cf9_reboot(int key)
+{
+	lockdep_off();
+	local_irq_enable();
+	reboot_type = BOOT_CF9_FORCE;
+	reboot_mode = REBOOT_COLD;
+	emergency_restart();
+}
+static struct sysrq_key_op sysrq_cf9_reboot_op = {
+	.handler	= sysrq_handle_cf9_reboot,
+	.help_msg	= "cf9 reboot(g)",
+	.action_msg	= "CF9 Resetting",
+	.enable_mask	= SYSRQ_ENABLE_BOOT,
+};
+#endif /* MY_DEF_HERE */
 static void sysrq_handle_sync(int key)
 {
 	emergency_sync();
@@ -243,10 +255,8 @@ static void sysrq_handle_showallcpus(int key)
 	 * architecture has no support for it:
 	 */
 	if (!trigger_all_cpu_backtrace()) {
-		struct pt_regs *regs = NULL;
+		struct pt_regs *regs = get_irq_regs();
 
-		if (in_irq())
-			regs = get_irq_regs();
 		if (regs) {
 			pr_info("CPU%d:\n", smp_processor_id());
 			show_regs(regs);
@@ -265,10 +275,7 @@ static struct sysrq_key_op sysrq_showallcpus_op = {
 
 static void sysrq_handle_showregs(int key)
 {
-	struct pt_regs *regs = NULL;
-
-	if (in_irq())
-		regs = get_irq_regs();
+	struct pt_regs *regs = get_irq_regs();
 	if (regs)
 		show_regs(regs);
 	perf_event_print_debug();
@@ -453,7 +460,11 @@ static struct sysrq_key_op *sysrq_key_table[36] = {
 	&sysrq_term_op,			/* e */
 	&sysrq_moom_op,			/* f */
 	/* g: May be registered for the kernel debugger */
-	NULL,				/* g */
+#ifdef MY_DEF_HERE
+	&sysrq_cf9_reboot_op, 		/* g */
+#else
+	NULL,                           /* g */
+#endif /* MY_DEF_HERE */
 	NULL,				/* h - reserved for help */
 	&sysrq_kill_op,			/* i */
 #ifdef CONFIG_BLOCK

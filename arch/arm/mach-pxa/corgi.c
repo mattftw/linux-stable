@@ -18,7 +18,6 @@
 #include <linux/major.h>
 #include <linux/fs.h>
 #include <linux/interrupt.h>
-#include <linux/leds.h>
 #include <linux/mmc/host.h>
 #include <linux/mtd/physmap.h>
 #include <linux/pm.h>
@@ -498,7 +497,6 @@ static struct pxamci_platform_data corgi_mci_platform_data = {
 	.gpio_power		= CORGI_GPIO_SD_PWR,
 };
 
-
 /*
  * Irda
  */
@@ -506,7 +504,6 @@ static struct pxaficp_platform_data corgi_ficp_platform_data = {
 	.gpio_pwdown		= CORGI_GPIO_IR_ON,
 	.transceiver_cap	= IR_SIRMODE | IR_OFF,
 };
-
 
 /*
  * USB Device Controller
@@ -805,4 +802,3 @@ MACHINE_START(HUSKY, "SHARP Husky")
 	.restart	= corgi_restart,
 MACHINE_END
 #endif
-

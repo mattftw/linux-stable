@@ -28,7 +28,6 @@ MODULE_DESCRIPTION("Texas Instruments TVP5150A video decoder driver");
 MODULE_AUTHOR("Mauro Carvalho Chehab");
 MODULE_LICENSE("GPL");
 
-
 static int debug;
 module_param(debug, int, 0644);
 MODULE_PARM_DESC(debug, "Debug level (0-2)");
@@ -748,7 +747,6 @@ static int tvp5150_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
 	else
 		decoder->rect.height = TVP5150_V_MAX_OTHERS;
 
-
 	return tvp5150_set_std(sd, std);
 }
 
@@ -870,6 +868,9 @@ static int tvp5150_s_crop(struct v4l2_subdev *sd, const struct v4l2_crop *a)
 
 	/* tvp5150 has some special limits */
 	rect.left = clamp(rect.left, 0, TVP5150_MAX_CROP_LEFT);
+	rect.width = clamp_t(unsigned int, rect.width,
+			     TVP5150_H_MAX - TVP5150_MAX_CROP_LEFT - rect.left,
+			     TVP5150_H_MAX - rect.left);
 	rect.top = clamp(rect.top, 0, TVP5150_MAX_CROP_TOP);
 
 	/* Calculate height based on current standard */
@@ -883,16 +884,9 @@ static int tvp5150_s_crop(struct v4l2_subdev *sd, const struct v4l2_crop *a)
 	else
 		hmax = TVP5150_V_MAX_OTHERS;
 
-	/*
-	 * alignments:
-	 *  - width = 2 due to UYVY colorspace
-	 *  - height, image = no special alignment
-	 */
-	v4l_bound_align_image(&rect.width,
-			      TVP5150_H_MAX - TVP5150_MAX_CROP_LEFT - rect.left,
-			      TVP5150_H_MAX - rect.left, 1, &rect.height,
+	rect.height = clamp_t(unsigned int, rect.height,
 			      hmax - TVP5150_MAX_CROP_TOP - rect.top,
-			      hmax - rect.top, 0, 0);
+			      hmax - rect.top);
 
 	tvp5150_write(sd, TVP5150_VERT_BLANKING_START, rect.top);
 	tvp5150_write(sd, TVP5150_VERT_BLANKING_STOP,
@@ -1103,7 +1097,6 @@ static const struct v4l2_subdev_ops tvp5150_ops = {
 	.vbi = &tvp5150_vbi_ops,
 	.pad = &tvp5150_pad_ops,
 };
-
 
 /****************************************************************************
 			I2C Client & Driver

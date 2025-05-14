@@ -115,9 +115,6 @@ bool afs_cm_incoming_call(struct afs_call *call)
 	case CBProbe:
 		call->type = &afs_SRXCBProbe;
 		return true;
-	case CBProbeUuid:
-		call->type = &afs_SRXCBProbeUuid;
-		return true;
 	case CBTellMeAboutYourself:
 		call->type = &afs_SRXCBTellMeAboutYourself;
 		return true;
@@ -439,7 +436,6 @@ static void SRXAFSCB_ProbeUuid(struct work_struct *work)
 	} reply;
 
 	_enter("");
-
 
 	if (memcmp(r, &afs_uuid, sizeof(afs_uuid)) == 0)
 		reply.match = htonl(0);

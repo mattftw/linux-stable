@@ -35,17 +35,13 @@ err:
 	return NULL;
 }
 
-
-
 static int parse_status(const char *value)
 {
 	int ret = 0;
 	char *c;
 
-
 	for (int i = 0; i < vhci_driver->nports; i++)
 		memset(&vhci_driver->idev[i], 0, sizeof(vhci_driver->idev[i]));
-
 
 	/* skip a header line */
 	c = strchr(value, '\n');
@@ -55,12 +51,12 @@ static int parse_status(const char *value)
 
 	while (*c != '\0') {
 		int port, status, speed, devid;
-		int sockfd;
+		unsigned long socket;
 		char lbusid[SYSFS_BUS_ID_SIZE];
 
-		ret = sscanf(c, "%d %d %d %x %u %31s\n",
+		ret = sscanf(c, "%d %d %d %x %lx %31s\n",
 				&port, &status, &speed,
-				&devid, &sockfd, lbusid);
+				&devid, &socket, lbusid);
 
 		if (ret < 5) {
 			dbg("sscanf failed: %d", ret);
@@ -69,8 +65,7 @@ static int parse_status(const char *value)
 
 		dbg("port %d status %d speed %d devid %x",
 				port, status, speed, devid);
-		dbg("sockfd %u lbusid %s", sockfd, lbusid);
-
+		dbg("socket %lx lbusid %s", socket, lbusid);
 
 		/* if a device is connected, look at it */
 		{
@@ -93,7 +88,6 @@ static int parse_status(const char *value)
 				}
 			}
 		}
-
 
 		/* go to the next line */
 		c = strchr(c, '\n');
@@ -259,7 +253,6 @@ err:
 	return -1;
 }
 
-
 void usbip_vhci_driver_close(void)
 {
 	if (!vhci_driver)
@@ -274,7 +267,6 @@ void usbip_vhci_driver_close(void)
 	udev_unref(udev_context);
 }
 
-
 int usbip_vhci_refresh_device_list(void)
 {
 
@@ -286,7 +278,6 @@ err:
 	dbg("failed to refresh device list");
 	return -1;
 }
-
 
 int usbip_vhci_get_free_port(void)
 {

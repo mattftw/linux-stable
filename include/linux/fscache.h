@@ -31,7 +31,6 @@
 #define fscache_cookie_valid(cookie) (0)
 #endif
 
-
 /*
  * overload PG_private_2 to give us PG_fscache - this is used to indicate that
  * a page is currently backed by a local disk cache
@@ -764,7 +763,7 @@ bool fscache_maybe_release_page(struct fscache_cookie *cookie,
 {
 	if (fscache_cookie_valid(cookie) && PageFsCache(page))
 		return __fscache_maybe_release_page(cookie, page, gfp);
-	return true;
+	return false;
 }
 
 /**

@@ -53,7 +53,6 @@
 #define XFRM_INC_STATS_USER(net, field)	((void)(net))
 #endif
 
-
 /* Organization of SPD aka "XFRM rules"
    ------------------------------------
 
@@ -83,7 +82,6 @@
                                       |---. child .-> NULL
 
    Bundles are cached at xrfm_policy struct (field ->bundles).
-
 
    Resolution of xrfm_tmpl
    -----------------------
@@ -948,6 +946,10 @@ struct xfrm_dst {
 	struct flow_cache_object flo;
 	struct xfrm_policy *pols[XFRM_POLICY_TYPE_MAX];
 	int num_pols, num_xfrms;
+#ifdef CONFIG_XFRM_SUB_POLICY
+	struct flowi *origin;
+	struct xfrm_selector *partner;
+#endif
 	u32 xfrm_genid;
 	u32 policy_genid;
 	u32 route_mtu_cached;
@@ -963,6 +965,12 @@ static inline void xfrm_dst_destroy(struct xfrm_dst *xdst)
 	dst_release(xdst->route);
 	if (likely(xdst->u.dst.xfrm))
 		xfrm_state_put(xdst->u.dst.xfrm);
+#ifdef CONFIG_XFRM_SUB_POLICY
+	kfree(xdst->origin);
+	xdst->origin = NULL;
+	kfree(xdst->partner);
+	xdst->partner = NULL;
+#endif
 }
 #endif
 
@@ -1734,7 +1742,6 @@ static inline struct xfrm_algo_aead *xfrm_algo_aead_clone(struct xfrm_algo_aead 
 {
 	return kmemdup(orig, aead_len(orig), GFP_KERNEL);
 }
-
 
 static inline struct xfrm_algo *xfrm_algo_clone(struct xfrm_algo *orig)
 {

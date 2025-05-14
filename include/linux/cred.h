@@ -87,7 +87,6 @@ extern int set_current_groups(struct group_info *);
 extern void set_groups(struct cred *, struct group_info *);
 extern int groups_search(const struct group_info *, kgid_t);
 extern bool may_setgroups(void);
-extern void groups_sort(struct group_info *);
 
 /* access the groups "array" with this macro */
 #define GROUP_AT(gi, i) \
@@ -383,7 +382,6 @@ static inline struct user_namespace *current_user_ns(void)
 	return &init_user_ns;
 }
 #endif
-
 
 #define current_uid_gid(_uid, _gid)		\
 do {						\

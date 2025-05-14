@@ -105,7 +105,6 @@
 #define REG_GMCO		0x6d
 #define REG_BMCO		0x6e
 
-
 /* Register bits, values, etc. */
 #define OV6650_PIDH		0x66	/* high byte of product ID number */
 #define OV6650_PIDL		0x50	/* low byte of product ID number */
@@ -171,7 +170,6 @@
 
 #define FRAME_RATE_MAX		30
 
-
 struct ov6650_reg {
 	u8	reg;
 	u8	val;
@@ -205,7 +203,6 @@ struct ov6650 {
 	u32 code;
 	enum v4l2_colorspace	colorspace;
 };
-
 
 static u32 ov6650_codes[] = {
 	MEDIA_BUS_FMT_YUYV8_2X8,
@@ -266,7 +263,6 @@ static int ov6650_reg_write(struct i2c_client *client, u8 reg, u8 val)
 	}
 	return 0;
 }
-
 
 /* Read a register, alter its bits, write it back */
 static int ov6650_reg_rmw(struct i2c_client *client, u8 reg, u8 set, u8 mask)
@@ -1033,7 +1029,7 @@ static int ov6650_probe(struct i2c_client *client,
 	priv->code	  = MEDIA_BUS_FMT_YUYV8_2X8;
 	priv->colorspace  = V4L2_COLORSPACE_JPEG;
 
-	priv->clk = v4l2_clk_get(&client->dev, NULL);
+	priv->clk = v4l2_clk_get(&client->dev, "mclk");
 	if (IS_ERR(priv->clk)) {
 		ret = PTR_ERR(priv->clk);
 		goto eclkget;

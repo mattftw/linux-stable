@@ -955,7 +955,6 @@ static int snd_cs4231_capture_prepare(struct snd_pcm_substream *substream)
 	chip->image[CS4231_IFACE_CTRL] &= ~(CS4231_RECORD_ENABLE |
 					    CS4231_RECORD_PIO);
 
-
 	chip->c_periods_sent = 0;
 	spin_unlock_irqrestore(&chip->lock, flags);
 
@@ -1146,8 +1145,10 @@ static int snd_cs4231_playback_open(struct snd_pcm_substream *substream)
 	runtime->hw = snd_cs4231_playback;
 
 	err = snd_cs4231_open(chip, CS4231_MODE_PLAY);
-	if (err < 0)
+	if (err < 0) {
+		snd_free_pages(runtime->dma_area, runtime->dma_bytes);
 		return err;
+	}
 	chip->playback_substream = substream;
 	chip->p_periods_sent = 0;
 	snd_pcm_set_sync(substream);
@@ -1165,8 +1166,10 @@ static int snd_cs4231_capture_open(struct snd_pcm_substream *substream)
 	runtime->hw = snd_cs4231_capture;
 
 	err = snd_cs4231_open(chip, CS4231_MODE_RECORD);
-	if (err < 0)
+	if (err < 0) {
+		snd_free_pages(runtime->dma_area, runtime->dma_bytes);
 		return err;
+	}
 	chip->capture_substream = substream;
 	chip->c_periods_sent = 0;
 	snd_pcm_set_sync(substream);

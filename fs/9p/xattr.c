@@ -56,7 +56,6 @@ ssize_t v9fs_fid_xattr_get(struct p9_fid *fid, const char *name,
 	return retval;
 }
 
-
 /*
  * v9fs_xattr_get()
  *
@@ -107,7 +106,7 @@ int v9fs_fid_xattr_set(struct p9_fid *fid, const char *name,
 {
 	struct kvec kvec = {.iov_base = (void *)value, .iov_len = value_len};
 	struct iov_iter from;
-	int retval, err;
+	int retval;
 
 	iov_iter_kvec(&from, WRITE | ITER_KVEC, &kvec, 1, value_len);
 
@@ -128,9 +127,7 @@ int v9fs_fid_xattr_set(struct p9_fid *fid, const char *name,
 			 retval);
 	else
 		p9_client_write(fid, 0, &from, &retval);
-	err = p9_client_clunk(fid);
-	if (!retval && err)
-		retval = err;
+	p9_client_clunk(fid);
 	return retval;
 }
 

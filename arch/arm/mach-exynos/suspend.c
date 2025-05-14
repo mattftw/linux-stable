@@ -260,7 +260,6 @@ static int __init exynos_pmu_irq_init(struct device_node *node,
 					  NULL);
 	if (!domain) {
 		iounmap(pmu_base_addr);
-		pmu_base_addr = NULL;
 		return -ENOMEM;
 	}
 
@@ -415,7 +414,6 @@ static void exynos5420_pm_prepare(void)
 	tmp |= EXYNOS5420_EMULATION;
 	pmu_raw_writel(tmp, EXYNOS5420_PSGEN_OPTION);
 }
-
 
 static int exynos_pm_suspend(void)
 {

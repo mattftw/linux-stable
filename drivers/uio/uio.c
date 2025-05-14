@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * drivers/uio/uio.c
  *
@@ -249,8 +252,6 @@ static struct class uio_class = {
 	.dev_groups = uio_groups,
 };
 
-bool uio_class_registered;
-
 /*
  * device functions
  */
@@ -379,6 +380,28 @@ static int uio_get_minor(struct uio_device *idev)
 	mutex_unlock(&minor_lock);
 	return retval;
 }
+
+#if defined(MY_ABC_HERE) || defined(CONFIG_SYNO_LSP_RTD1619)
+#if defined(CONFIG_UIO_ASSIGN_MINOR)
+static int uio_use_minor(struct uio_device *idev, int minor)
+{
+	int retval = -ENOMEM;
+
+	mutex_lock(&minor_lock);
+	retval = idr_alloc(&uio_idr, idev, minor, minor+1, GFP_KERNEL);
+	if (retval >= 0) {
+		idev->minor = retval;
+		retval = 0;
+	} else if (retval == -ENOSPC) {
+		dev_err(idev->dev, "too many uio devices\n");
+		retval = -EINVAL;
+	}
+
+	mutex_unlock(&minor_lock);
+	return retval;
+}
+#endif /* CONFIG_UIO_ASSIGN_MINOR */
+#endif /* MY_ABC_HERE || CONFIG_SYNO_LSP_RTD1619 */
 
 static void uio_free_minor(struct uio_device *idev)
 {
@@ -774,9 +797,6 @@ static int init_uio_class(void)
 		printk(KERN_ERR "class_register failed for uio\n");
 		goto err_class_register;
 	}
-
-	uio_class_registered = true;
-
 	return 0;
 
 err_class_register:
@@ -787,7 +807,6 @@ exit:
 
 static void release_uio_class(void)
 {
-	uio_class_registered = false;
 	class_unregister(&uio_class);
 	uio_major_cleanup();
 }
@@ -807,9 +826,6 @@ int __uio_register_device(struct module *owner,
 	struct uio_device *idev;
 	int ret = 0;
 
-	if (!uio_class_registered)
-		return -EPROBE_DEFER;
-
 	if (!parent || !info || !info->name || !info->version)
 		return -EINVAL;
 
@@ -825,7 +841,19 @@ int __uio_register_device(struct module *owner,
 	init_waitqueue_head(&idev->wait);
 	atomic_set(&idev->event, 0);
 
+#if defined(CONFIG_UIO_ASSIGN_MINOR) && (defined(MY_ABC_HERE) || defined(CONFIG_SYNO_LSP_RTD1619))
+#if defined(CONFIG_SYNO_LSP_RTD1619)
+	if(info->minor > 0) {
+#else /* CONFIG_SYNO_LSP_RTD1619 */
+	if(info->minor >= 0) {
+#endif /* CONFIG_SYNO_LSP_RTD1619 */
+		ret = uio_use_minor(idev, info->minor);
+	} else {
+		ret = uio_get_minor(idev);
+	}
+#else /* CONFIG_UIO_ASSIGN_MINOR && (MY_ABC_HERE || CONFIG_SYNO_LSP_RTD1619) */
 	ret = uio_get_minor(idev);
+#endif /* CONFIG_UIO_ASSIGN_MINOR && (MY_ABC_HERE || CONFIG_SYNO_LSP_RTD1619) */
 	if (ret)
 		return ret;
 
@@ -855,10 +883,8 @@ int __uio_register_device(struct module *owner,
 		 */
 		ret = request_irq(info->irq, uio_interrupt,
 				  info->irq_flags, info->name, idev);
-		if (ret) {
-			info->uio_dev = NULL;
+		if (ret)
 			goto err_request_irq;
-		}
 	}
 
 	return 0;

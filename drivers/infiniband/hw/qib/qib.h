@@ -1272,7 +1272,6 @@ static inline struct qib_ibport *to_iport(struct ib_device *ibdev, u8 port)
 /* IB dword length mask in PBC (lower 11 bits); same for all chips */
 #define QIB_PBC_LENGTH_MASK                     ((1 << 11) - 1)
 
-
 /* ctxt_flag bit offsets */
 		/* waiting for a packet to arrive */
 #define QIB_CTXT_WAITING_RCV   2
@@ -1451,7 +1450,8 @@ u64 qib_sps_ints(void);
 /*
  * dma_addr wrappers - all 0's invalid for hw
  */
-int qib_map_page(struct pci_dev *d, struct page *p, dma_addr_t *daddr);
+dma_addr_t qib_map_page(struct pci_dev *, struct page *, unsigned long,
+			  size_t, int);
 const char *qib_get_unit_name(int unit);
 
 /*

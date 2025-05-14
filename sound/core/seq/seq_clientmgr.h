@@ -27,7 +27,6 @@
 #include "seq_ports.h"
 #include "seq_lock.h"
 
-
 /* client manager */
 
 struct snd_seq_user_client {
@@ -42,7 +41,6 @@ struct snd_seq_user_client {
 struct snd_seq_kernel_client {
 	/* ... */
 };
-
 
 struct snd_seq_client {
 	snd_seq_client_type_t type;
@@ -59,7 +57,6 @@ struct snd_seq_client {
 	struct list_head ports_list_head;
 	rwlock_t ports_lock;
 	struct mutex ports_mutex;
-	struct mutex ioctl_mutex;
 	int convert32;		/* convert 32->64bit */
 
 	/* output pool */
@@ -76,7 +73,6 @@ struct snd_seq_usage {
 	int cur;
 	int peak;
 };
-
 
 int client_init_data(void);
 int snd_sequencer_device_init(void);

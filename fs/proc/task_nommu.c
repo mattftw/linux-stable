@@ -124,17 +124,25 @@ unsigned long task_statm(struct mm_struct *mm,
 }
 
 static int is_stack(struct proc_maps_private *priv,
-		    struct vm_area_struct *vma)
+		    struct vm_area_struct *vma, int is_pid)
 {
 	struct mm_struct *mm = vma->vm_mm;
+	int stack = 0;
 
-	/*
-	 * We make no effort to guess what a given thread considers to be
-	 * its "stack".  It's not even well-defined for programs written
-	 * languages like Go.
-	 */
-	return vma->vm_start <= mm->start_stack &&
-		vma->vm_end >= mm->start_stack;
+	if (is_pid) {
+		stack = vma->vm_start <= mm->start_stack &&
+			vma->vm_end >= mm->start_stack;
+	} else {
+		struct inode *inode = priv->inode;
+		struct task_struct *task;
+
+		rcu_read_lock();
+		task = pid_task(proc_pid(inode), PIDTYPE_PID);
+		if (task)
+			stack = vma_is_stack_for_task(vma, task);
+		rcu_read_unlock();
+	}
+	return stack;
 }
 
 /*
@@ -155,7 +163,15 @@ static int nommu_vma_show(struct seq_file *m, struct vm_area_struct *vma,
 	file = vma->vm_file;
 
 	if (file) {
+#ifdef CONFIG_AUFS_FHSM
+		struct inode *inode;
+
+		file = vma_pr_or_file(vma);
+		inode = file_inode(file);
+#else
 		struct inode *inode = file_inode(vma->vm_file);
+#endif /* CONFIG_AUFS_FHSM */
+
 		dev = inode->i_sb->s_dev;
 		ino = inode->i_ino;
 		pgoff = (loff_t)vma->vm_pgoff << PAGE_SHIFT;
@@ -176,7 +192,7 @@ static int nommu_vma_show(struct seq_file *m, struct vm_area_struct *vma,
 	if (file) {
 		seq_pad(m, ' ');
 		seq_file_path(m, file, "");
-	} else if (mm && is_stack(priv, vma)) {
+	} else if (mm && is_stack(priv, vma, is_pid)) {
 		seq_pad(m, ' ');
 		seq_printf(m, "[stack]");
 	}
@@ -290,7 +306,6 @@ static int maps_open(struct inode *inode, struct file *file,
 	return 0;
 }
 
-
 static int map_release(struct inode *inode, struct file *file)
 {
 	struct seq_file *seq = file->private_data;
@@ -325,4 +340,3 @@ const struct file_operations proc_tid_maps_operations = {
 	.llseek		= seq_lseek,
 	.release	= map_release,
 };
-

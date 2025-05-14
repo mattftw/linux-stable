@@ -1022,7 +1022,6 @@ static ssize_t sony_nc_sysfs_store(struct device *dev,
 	return count;
 }
 
-
 /*
  * Backlight device
  */
@@ -3475,7 +3474,6 @@ static struct sonypi_event sonypi_helpev[] = {
 	{ 0, 0 }
 };
 
-
 /* The set of possible lid events */
 static struct sonypi_event sonypi_lidev[] = {
 	{ 0x51, SONYPI_EVENT_LID_CLOSED },
@@ -4394,16 +4392,14 @@ sony_pic_read_possible_resource(struct acpi_resource *resource, void *context)
 			}
 			return AE_OK;
 		}
-
-	case ACPI_RESOURCE_TYPE_END_TAG:
-		return AE_OK;
-
 	default:
 		dprintk("Resource %d isn't an IRQ nor an IO port\n",
 			resource->type);
-		return AE_CTRL_TERMINATE;
 
+	case ACPI_RESOURCE_TYPE_END_TAG:
+		return AE_OK;
 	}
+	return AE_CTRL_TERMINATE;
 }
 
 static int sony_pic_possible_resources(struct acpi_device *device)
@@ -4456,7 +4452,6 @@ static int sony_pic_disable(struct acpi_device *device)
 	dprintk("Device disabled\n");
 	return 0;
 }
-
 
 /*
  *  Based on drivers/acpi/pci_link.c:acpi_pci_link_set

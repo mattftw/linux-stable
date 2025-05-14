@@ -10,7 +10,6 @@
  *
  */
 
-
 #include <linux/time.h>
 #include <linux/errno.h>
 #include <linux/stat.h>
@@ -133,11 +132,12 @@ ncp_hash_dentry(const struct dentry *dentry, struct qstr *this)
 		return 0;
 
 	if (!ncp_case_sensitive(inode)) {
+		struct super_block *sb = dentry->d_sb;
 		struct nls_table *t;
 		unsigned long hash;
 		int i;
 
-		t = NCP_IO_TABLE(dentry->d_sb);
+		t = NCP_IO_TABLE(sb);
 		hash = init_name_hash();
 		for (i=0; i<this->len ; i++)
 			hash = partial_name_hash(ncp_tolower(t, this->name[i]),
@@ -203,11 +203,9 @@ static inline int ncp_is_server_root(struct inode *inode)
 		is_root_inode(inode);
 }
 
-
 /*
  * This is the callback when the dcache has a lookup hit.
  */
-
 
 #ifdef CONFIG_NCPFS_STRONG
 /* try to delete a readonly file (NW R bit set) */
@@ -305,7 +303,6 @@ leave_me:;
 }
 #endif	/* CONFIG_NCPFS_STRONG */
 
-
 static int
 ncp_lookup_validate(struct dentry *dentry, unsigned int flags)
 {
@@ -368,7 +365,7 @@ ncp_lookup_validate(struct dentry *dentry, unsigned int flags)
 	if (!res) {
 		struct inode *inode = d_inode(dentry);
 
-		mutex_lock(&inode->i_mutex);
+		inode_lock(inode);
 		if (finfo.i.dirEntNum == NCP_FINFO(inode)->dirEntNum) {
 			ncp_new_dentry(dentry);
 			val=1;
@@ -376,7 +373,7 @@ ncp_lookup_validate(struct dentry *dentry, unsigned int flags)
 			ncp_dbg(2, "found, but dirEntNum changed\n");
 
 		ncp_update_inode2(inode, &finfo);
-		mutex_unlock(&inode->i_mutex);
+		inode_unlock(inode);
 	}
 
 finished:
@@ -638,9 +635,9 @@ ncp_fill_cache(struct file *file, struct dir_context *ctx,
 	} else {
 		struct inode *inode = d_inode(newdent);
 
-		mutex_lock_nested(&inode->i_mutex, I_MUTEX_CHILD);
+		inode_lock_nested(inode, I_MUTEX_CHILD);
 		ncp_update_inode2(inode, entry);
-		mutex_unlock(&inode->i_mutex);
+		inode_unlock(inode);
 	}
 
 	if (ctl.idx >= NCP_DIRCACHE_SIZE) {
@@ -1206,7 +1203,6 @@ ncp_date_dos2unix(__le16 t, __le16 d)
 	/* days since 1.1.70 plus 80's leap day */
 	return local2utc(secs);
 }
-
 
 /* Convert linear UNIX date to a MS-DOS time/date pair. */
 void

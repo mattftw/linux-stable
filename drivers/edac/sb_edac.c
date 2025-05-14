@@ -246,7 +246,6 @@ static const u32 correrrthrsld[] = {
 #define RANK_ODD_ERR_THRSLD(reg)	GET_BITFIELD(reg, 16, 30)
 #define RANK_EVEN_ERR_THRSLD(reg)	GET_BITFIELD(reg,  0, 14)
 
-
 /* Device 17, function 0 */
 
 #define SB_RANK_CFG_A		0x0328
@@ -590,7 +589,6 @@ static const struct pci_device_id sbridge_pci_tbl[] = {
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_BROADWELL_IMC_HA0)},
 	{0,}			/* 0 terminated list. */
 };
-
 
 /****************************************************************************
 			Ancillary status routines
@@ -1224,7 +1222,6 @@ static int get_memory_error_data(struct mem_ctl_info *mci,
 	u32			mb, gb;
 	u64			ch_addr, offset, limit = 0, prv = 0;
 
-
 	/*
 	 * Step 0) Check if the address is at special memory ranges
 	 * The check bellow is probably enough to fill all cases where
@@ -1773,7 +1770,6 @@ static int ibridge_mci_bind_devs(struct mem_ctl_info *mci,
 			break;
 		case PCI_DEVICE_ID_INTEL_IBRIDGE_IMC_HA0_TA:
 			pvt->pci_ta = pdev;
-			break;
 		case PCI_DEVICE_ID_INTEL_IBRIDGE_IMC_HA0_RAS:
 			pvt->pci_ras = pdev;
 			break;
@@ -2145,7 +2141,6 @@ static void sbridge_mce_output_error(struct mem_ctl_info *mci,
 		dimm = 1;
 	else
 		dimm = 2;
-
 
 	/*
 	 * FIXME: On some memory configurations (mirror, lockstep), the

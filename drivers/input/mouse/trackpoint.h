@@ -21,10 +21,8 @@
 #define TP_COMMAND		0xE2	/* Commands start with this */
 
 #define TP_READ_ID		0xE1	/* Sent for device identification */
-#define TP_MAGIC_IDENT		0x03	/* Sent after a TP_READ_ID followed */
+#define TP_MAGIC_IDENT		0x01	/* Sent after a TP_READ_ID followed */
 					/* by the firmware ID */
-					/* Firmware ID includes 0x1, 0x2, 0x3 */
-
 
 /*
  * Commands
@@ -44,7 +42,6 @@
 #define TP_SET_SOFT_TRANS	0x4E	/* Set mode */
 #define TP_CANCEL_SOFT_TRANS	0xB9	/* Cancel mode */
 #define TP_SET_HARD_TRANS	0x45	/* Mode can only be set */
-
 
 /*
  * Register oriented commands/properties
@@ -104,7 +101,6 @@
 #define TP_TOGGLE_EXT_TAG	0x22	/* Bit 3 of the first packet coming from the
 					   external device will be forced to 1 */
 #define TP_MASK_EXT_TAG			0x04
-
 
 /* Power on Self Test Results */
 #define TP_POR_SUCCESS		0x3B
