@@ -1044,7 +1044,7 @@ SYSCALL_DEFINE2(clock_gettime, const clockid_t, which_clock,
 	struct timespec kernel_tp;
 	int error;
 
-	if (!kc)
+	if (!kc || !kc->clock_get)
 		return -EINVAL;
 
 	error = kc->clock_get(which_clock, &kernel_tp);

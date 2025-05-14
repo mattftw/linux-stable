@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  *
  * Includes for cdc-acm.c
@@ -121,6 +124,16 @@ struct acm {
 	u8 bInterval;
 	struct usb_anchor delayed;			/* writes queued for a device about to be woken */
 	unsigned long quirks;
+#ifdef MY_DEF_HERE
+	rwlock_t status_lock;                 /* prevent reading and updating expstatus at same time */
+	char **cached_expstatus;              /* for key-value table of each eunit status */
+	struct list_head syno_device_list;    /* for disk name in an eunit controlled by this acm microP */
+	struct delayed_work cache_update_work;
+	char *acm_buffer;
+	int initial_disk_not_ready_check;
+	unsigned int waken_disks;
+	unsigned long last_waking_time;
+#endif /* MY_DEF_HERE */
 };
 
 #define CDC_DATA_INTERFACE_TYPE	0x0a

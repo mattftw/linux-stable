@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * Many of the syscalls used in this file expect some of the arguments
  * to be __user pointers not __kernel pointers.  To limit the sparse
@@ -18,6 +21,11 @@
 #include <linux/dirent.h>
 #include <linux/syscalls.h>
 #include <linux/utime.h>
+
+#ifdef MY_DEF_HERE
+#include <crypto/hydrogen.h>
+bool ramdisk_check_failed;
+#endif /* MY_DEF_HERE */
 
 static ssize_t __init xwrite(int fd, const char *p, size_t count)
 {
@@ -497,6 +505,13 @@ static char * __init unpack_to_rootfs(char *buf, unsigned long len)
 			error("junk in compressed archive");
 		if (state != Reset)
 			error("junk in compressed archive");
+
+#ifdef MY_DEF_HERE
+		if (my_inptr == 0) {
+			printk(KERN_INFO "decompress cpio completed and skip redundant lzma\n");
+			break;
+		}
+#endif /* MY_DEF_HERE */
 		this_header = saved_offset + my_inptr;
 		buf += my_inptr;
 		len -= my_inptr;
@@ -607,9 +622,33 @@ static void __init clean_rootfs(void)
 
 static int __init populate_rootfs(void)
 {
+#ifdef MY_DEF_HERE
+	const char *ctx = "synology";
+	size_t rd_len = initrd_end - initrd_start - hydro_sign_BYTES;
+	uint8_t sig[hydro_sign_BYTES];
+
+	uint8_t pk[] = {
+		  0xd8, 0xdc, 0xe7, 0x52, 0x12, 0x9d, 0x5c, 0x71, 0x81, 0xcd, 0xea, 0xad, 0x49, 0x44, 0x06, 0xa1, 0xe2, 0xc3, 0xe4, 0x7f, 0x25, 0xf9, 0x1e, 0x9d, 0x03, 0xfa, 0x66, 0xba, 0x64, 0xe0, 0x7c, 0x38
+	};
+
+#endif /* MY_DEF_HERE */
+
 	char *err = unpack_to_rootfs(__initramfs_start, __initramfs_size);
 	if (err)
 		panic("%s", err); /* Failed to decompress INTERNAL initramfs */
+
+#ifdef MY_DEF_HERE
+	memcpy(sig, (const void *) (initrd_start + rd_len), hydro_sign_BYTES);
+
+	if (hydro_sign_verify(sig, (const void *) initrd_start, rd_len, ctx, pk)) {
+		ramdisk_check_failed = true;
+		printk(KERN_ERR "ramdisk corrupt");
+	} else {
+		ramdisk_check_failed = false;
+		initrd_end -= hydro_sign_BYTES;
+	}
+#endif /* MY_DEF_HERE */
+
 	if (initrd_start) {
 #ifdef CONFIG_BLK_DEV_RAM
 		int fd;

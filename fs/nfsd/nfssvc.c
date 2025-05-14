@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * Central processing for nfsd.
  *
@@ -22,6 +25,13 @@
 #include "cache.h"
 #include "vfs.h"
 #include "netns.h"
+#ifdef MY_ABC_HERE
+#include "trace.h"
+#endif /* MY_ABC_HERE */
+
+#ifdef MY_ABC_HERE
+#include "syno_io_stat.h"
+#endif /* MY_ABC_HERE */
 
 #define NFSDDBG_FACILITY	NFSDDBG_SVC
 
@@ -298,6 +308,9 @@ static void nfsd_shutdown_net(struct net *net)
 {
 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
 
+#ifdef MY_ABC_HERE
+	syno_nfsd_clients_destroy_all();
+#endif /* MY_ABC_HERE */
 	nfs4_state_shutdown_net(net);
 	if (nn->lockd_up) {
 		lockd_down(net);
@@ -370,6 +383,9 @@ static void set_max_drc(void)
 
 static int nfsd_get_default_max_blksize(void)
 {
+#if defined(CONFIG_SYNO_NFSD_WRITE_SIZE_MIN)
+	return CONFIG_SYNO_NFSD_WRITE_SIZE_MIN;
+#else /* CONFIG_SYNO_NFSD_WRITE_SIZE_MIN */
 	struct sysinfo i;
 	unsigned long long target;
 	unsigned long ret;
@@ -387,6 +403,7 @@ static int nfsd_get_default_max_blksize(void)
 	while (ret > target && ret >= 8*1024*2)
 		ret /= 2;
 	return ret;
+#endif /*CONFIG_SYNO_NFSD_WRITE_SIZE_MIN*/
 }
 
 static struct svc_serv_ops nfsd_thread_sv_ops = {
@@ -396,6 +413,37 @@ static struct svc_serv_ops nfsd_thread_sv_ops = {
 	.svo_setup		= svc_set_num_threads,
 	.svo_module		= THIS_MODULE,
 };
+
+static void nfsd_complete_shutdown(struct net *net)
+{
+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+
+	WARN_ON(!mutex_is_locked(&nfsd_mutex));
+
+	nn->nfsd_serv = NULL;
+	complete(&nn->nfsd_shutdown_complete);
+}
+
+void nfsd_shutdown_threads(struct net *net)
+{
+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+	struct svc_serv *serv;
+
+	mutex_lock(&nfsd_mutex);
+	serv = nn->nfsd_serv;
+	if (serv == NULL) {
+		mutex_unlock(&nfsd_mutex);
+		return;
+	}
+
+	svc_get(serv);
+	/* Kill outstanding nfsd threads */
+	serv->sv_ops->svo_setup(serv, NULL, 0);
+	nfsd_destroy(net);
+	mutex_unlock(&nfsd_mutex);
+	/* Wait for shutdown of nfsd_serv to complete */
+	wait_for_completion(&nn->nfsd_shutdown_complete);
+}
 
 int nfsd_create_serv(struct net *net)
 {
@@ -414,11 +462,13 @@ int nfsd_create_serv(struct net *net)
 						&nfsd_thread_sv_ops);
 	if (nn->nfsd_serv == NULL)
 		return -ENOMEM;
+	init_completion(&nn->nfsd_shutdown_complete);
 
 	nn->nfsd_serv->sv_maxconn = nn->max_connections;
 	error = svc_bind(nn->nfsd_serv, net);
 	if (error < 0) {
 		svc_destroy(nn->nfsd_serv);
+		nfsd_complete_shutdown(net);
 		return error;
 	}
 
@@ -459,7 +509,7 @@ void nfsd_destroy(struct net *net)
 		svc_shutdown_net(nn->nfsd_serv, net);
 	svc_destroy(nn->nfsd_serv);
 	if (destroy)
-		nn->nfsd_serv = NULL;
+		nfsd_complete_shutdown(net);
 }
 
 int nfsd_set_nrthreads(int n, int *nthreads, struct net *net)
@@ -735,6 +785,9 @@ nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
 
 	/* Now call the procedure handler, and encode NFS status. */
 	nfserr = proc->pc_func(rqstp, rqstp->rq_argp, rqstp->rq_resp);
+#ifdef MY_ABC_HERE
+	trace_syno_nfsd_dispatch(rqstp);
+#endif /* MY_ABC_HERE */
 	nfserr = map_new_errors(rqstp->rq_vers, nfserr);
 	if (nfserr == nfserr_dropit || test_bit(RQ_DROPME, &rqstp->rq_flags)) {
 		dprintk("nfsd: Dropping request; may be revisited later\n");

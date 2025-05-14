@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * per net namespace data structures for nfsd
  *
@@ -54,6 +57,11 @@ struct nfsd_net {
 	struct lock_manager nfsd4_manager;
 	bool grace_ended;
 	time_t boot_time;
+#ifdef MY_ABC_HERE
+	struct dentry *nfsd_syno_client_dir;
+#endif /* MY_ABC_HERE */
+
+	struct dentry *nfsd_client_dir;
 
 	/*
 	 * reclaim_str_hashtbl[] holds known client info from previous reset/reboot
@@ -109,14 +117,23 @@ struct nfsd_net {
 	 */
 	unsigned int max_connections;
 
+	u32 clientid_base;
 	u32 clientid_counter;
 	u32 clverifier_counter;
 
 	struct svc_serv *nfsd_serv;
+
+	/* Allow umount to wait for nfsd state cleanup */
+	struct completion nfsd_shutdown_complete;
 };
 
 /* Simple check to find out if a given net was properly initialized */
 #define nfsd_netns_ready(nn) ((nn)->sessionid_hashtbl)
 
 extern int nfsd_net_id;
+
+#ifdef MY_ABC_HERE
+struct nfsd_net *syno_nfsd_net_get(void);
+#endif /* MY_ABC_HERE */
+
 #endif /* __NFSD_NETNS_H__ */

@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * xHCI host controller driver
  *
@@ -30,6 +33,12 @@
 #include <linux/dmi.h>
 #include <linux/dma-mapping.h>
 
+#if defined(CONFIG_SYNO_LSP_RTD1619)
+#ifdef CONFIG_USB_PATCH_ON_RTK
+#include <linux/usb/quirks.h>
+#endif
+
+#endif /* CONFIG_SYNO_LSP_RTD1619 */
 #include "xhci.h"
 #include "xhci-trace.h"
 
@@ -174,6 +183,10 @@ int xhci_reset(struct xhci_hcd *xhci)
 	command |= CMD_RESET;
 	writel(command, &xhci->op_regs->command);
 
+#ifdef MY_DEF_HERE
+	mdelay(100);
+#endif
+
 	/* Existing Intel xHCI controllers require a delay of 1 mS,
 	 * after setting the CMD_RESET bit, and before accessing any
 	 * HC registers. This allows the HC to complete the
@@ -191,6 +204,11 @@ int xhci_reset(struct xhci_hcd *xhci)
 
 	xhci_dbg_trace(xhci, trace_xhci_dbg_init,
 			 "Wait for controller to be ready for doorbell rings");
+
+#ifdef MY_DEF_HERE
+	mdelay(100);
+#endif
+
 	/*
 	 * xHCI cannot write to any doorbells or operational registers other
 	 * than status until the "Controller Not Ready" flag is cleared.
@@ -563,6 +581,14 @@ int xhci_init(struct usb_hcd *hcd)
 
 /*-------------------------------------------------------------------------*/
 
+#ifdef MY_ABC_HERE
+extern int gSynoFactoryUSB3Disable;
+#endif /* MY_ABC_HERE */
+
+#ifdef MY_ABC_HERE
+extern int gSynoFactoryUSBFastReset;
+extern unsigned int blk_timeout_factory; // defined in blk-timeout.c
+#endif /* MY_ABC_HERE */
 
 static int xhci_run_finished(struct xhci_hcd *xhci)
 {
@@ -578,6 +604,20 @@ static int xhci_run_finished(struct xhci_hcd *xhci)
 
 	xhci_dbg_trace(xhci, trace_xhci_dbg_init,
 			"Finished xhci_run for USB3 roothub");
+
+#ifdef MY_ABC_HERE
+	if (1 == gSynoFactoryUSB3Disable) {
+		printk("xhci USB3 ports are disabled!\n");
+	}
+#endif /* MY_ABC_HERE */
+
+#ifdef MY_ABC_HERE
+	if (1 == gSynoFactoryUSBFastReset) {
+		printk("USB_FAST_RESET enabled!\n");
+		blk_timeout_factory = 1;
+	}
+#endif /* MY_ABC_HERE */
+
 	return 0;
 }
 
@@ -724,6 +764,13 @@ void xhci_stop(struct usb_hcd *hcd)
 			"xhci_stop completed - status = %x",
 			readl(&xhci->op_regs->status));
 	mutex_unlock(&xhci->mutex);
+
+#ifdef MY_ABC_HERE
+	if (1 == gSynoFactoryUSBFastReset) {
+		printk("USB_FAST_RESET disabled!\n");
+		blk_timeout_factory = 0;
+	}
+#endif /* MY_ABC_HERE */
 }
 
 /*
@@ -929,6 +976,7 @@ int xhci_suspend(struct xhci_hcd *xhci, bool do_wakeup)
 	unsigned int		delay = XHCI_MAX_HALT_USEC * 2;
 	struct usb_hcd		*hcd = xhci_to_hcd(xhci);
 	u32			command;
+	u32			res;
 
 	if (!hcd->state)
 		return 0;
@@ -947,6 +995,9 @@ int xhci_suspend(struct xhci_hcd *xhci, bool do_wakeup)
 	del_timer_sync(&hcd->rh_timer);
 	clear_bit(HCD_FLAG_POLL_RH, &xhci->shared_hcd->flags);
 	del_timer_sync(&xhci->shared_hcd->rh_timer);
+
+	if (xhci->quirks & XHCI_SUSPEND_DELAY)
+		usleep_range(1000, 1500);
 
 	spin_lock_irq(&xhci->lock);
 	clear_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
@@ -977,11 +1028,28 @@ int xhci_suspend(struct xhci_hcd *xhci, bool do_wakeup)
 	command = readl(&xhci->op_regs->command);
 	command |= CMD_CSS;
 	writel(command, &xhci->op_regs->command);
+	xhci->broken_suspend = 0;
 	if (xhci_handshake(&xhci->op_regs->status,
 				STS_SAVE, 0, 20 * 1000)) {
-		xhci_warn(xhci, "WARN: xHC save state timeout\n");
-		spin_unlock_irq(&xhci->lock);
-		return -ETIMEDOUT;
+	/*
+	 * AMD SNPS xHC 3.0 occasionally does not clear the
+	 * SSS bit of USBSTS and when driver tries to poll
+	 * to see if the xHC clears BIT(8) which never happens
+	 * and driver assumes that controller is not responding
+	 * and times out. To workaround this, its good to check
+	 * if SRE and HCE bits are not set (as per xhci
+	 * Section 5.4.2) and bypass the timeout.
+	 */
+		res = readl(&xhci->op_regs->status);
+		if ((xhci->quirks & XHCI_SNPS_BROKEN_SUSPEND) &&
+		    (((res & STS_SRE) == 0) &&
+				((res & STS_HCE) == 0))) {
+			xhci->broken_suspend = 1;
+		} else {
+			xhci_warn(xhci, "WARN: xHC save state timeout\n");
+			spin_unlock_irq(&xhci->lock);
+			return -ETIMEDOUT;
+		}
 	}
 	spin_unlock_irq(&xhci->lock);
 
@@ -1035,7 +1103,7 @@ int xhci_resume(struct xhci_hcd *xhci, bool hibernated)
 	set_bit(HCD_FLAG_HW_ACCESSIBLE, &xhci->shared_hcd->flags);
 
 	spin_lock_irq(&xhci->lock);
-	if (xhci->quirks & XHCI_RESET_ON_RESUME)
+	if ((xhci->quirks & XHCI_RESET_ON_RESUME) || xhci->broken_suspend)
 		hibernated = true;
 
 	if (!hibernated) {
@@ -1475,6 +1543,13 @@ int xhci_urb_enqueue(struct usb_hcd *hcd, struct urb *urb, gfp_t mem_flags)
 					"not having streams.\n");
 			ret = -EINVAL;
 		} else {
+#ifdef MY_ABC_HERE
+			if (xhci->devs[slot_id]->disconnected) {
+					xhci_warn(xhci, "Ignore URB enqueuing while device "
+									"is disconnecting\n");
+					ret = -ENOTCONN;
+			} else
+#endif /* MY_ABC_HERE */
 			ret = xhci_queue_bulk_tx(xhci, GFP_ATOMIC, urb,
 					slot_id, ep_index);
 		}
