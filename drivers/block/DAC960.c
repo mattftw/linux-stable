@@ -1797,7 +1797,6 @@ static bool DAC960_V2_ReadControllerConfiguration(DAC960_Controller_T
   memcpy(ControllerInfo, Controller->V2.NewControllerInformation,
 			sizeof(DAC960_V2_ControllerInfo_T));
 	 
-  
   if (!DAC960_V2_GeneralInfo(Controller))
     return DAC960_Failure(Controller, "GET HEALTH STATUS");
 

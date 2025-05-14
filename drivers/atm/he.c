@@ -2683,7 +2683,6 @@ he_phy_put(struct atm_dev *atm_dev, unsigned char val, unsigned long addr)
 	spin_unlock_irqrestore(&he_dev->global_lock, flags);
 }
  
-	
 static unsigned char
 he_phy_get(struct atm_dev *atm_dev, unsigned long addr)
 { 

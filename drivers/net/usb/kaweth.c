@@ -237,7 +237,6 @@ struct kaweth_device
 	dma_addr_t rxbufferhandle;
 	__u8 *rx_buf;
 
-	
 	struct sk_buff *tx_skb;
 
 	__u8 *firmware_buf;

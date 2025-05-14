@@ -36,7 +36,6 @@
 #include "machvec_impl.h"
 #include "err_impl.h"
 
-
 /*
  * Titan generic
  */
@@ -255,7 +254,6 @@ titan_dispatch_irqs(u64 mask)
 	}
 }
   
-
 /*
  * Titan Family
  */
@@ -337,7 +335,6 @@ titan_init_pci(void)
 	locate_and_init_vga(NULL);
 }
 
-
 /*
  * Privateer
  */
@@ -359,7 +356,6 @@ privateer_init_pci(void)
 	return titan_init_pci();
 }
 
-
 /*
  * The System Vectors.
  */

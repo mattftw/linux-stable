@@ -426,7 +426,6 @@ static void z8530_tx(struct z8530_channel *c)
 		}
 	}
 
-	
 	/*
 	 *	End of frame TX - fire another one
 	 */
@@ -1155,7 +1154,6 @@ int z8530_sync_txdma_close(struct net_device *dev, struct z8530_channel *c)
 	unsigned long dflags, cflags;
 	u8 chk;
 
-	
 	spin_lock_irqsave(c->lock, cflags);
 	
 	c->irqs = &z8530_nop;
@@ -1461,7 +1459,6 @@ static void z8530_tx_begin(struct z8530_channel *c)
 	{
 		c->txcount=c->tx_skb->len;
 		
-		
 		if(c->dma_tx)
 		{
 			/*
@@ -1736,7 +1733,6 @@ netdev_tx_t z8530_queue_xmit(struct z8530_channel *c, struct sk_buff *skb)
 	if(c->tx_next_skb)
 		return NETDEV_TX_BUSY;
 
-	
 	/* PC SPECIFIC - DMA limits */
 	
 	/*

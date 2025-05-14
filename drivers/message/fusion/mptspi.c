@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  *  linux/drivers/message/fusion/mptspi.c
  *      For use with LSI PCI chip/adapter(s)
@@ -850,6 +853,9 @@ static struct scsi_host_template mptspi_driver_template = {
 	.cmd_per_lun			= 7,
 	.use_clustering			= ENABLE_CLUSTERING,
 	.shost_attrs			= mptscsih_host_attrs,
+#if defined(MY_DEF_HERE) && defined(MY_ABC_HERE)
+	.syno_index_get			= mptscsih_index_get,
+#endif /* MY_DEF_HERE && MY_ABC_HERE */
 };
 
 static int mptspi_write_spi_device_pg1(struct scsi_target *starget,

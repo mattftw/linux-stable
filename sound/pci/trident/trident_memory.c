@@ -202,8 +202,6 @@ snd_trident_alloc_sg_pages(struct snd_trident *trident,
 	if (snd_BUG_ON(!hdr))
 		return NULL;
 
-	
-
 	mutex_lock(&hdr->block_mutex);
 	blk = search_empty(hdr, runtime->dma_bytes);
 	if (blk == NULL) {

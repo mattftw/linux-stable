@@ -517,7 +517,6 @@ static void cs46xx_dsp_proc_symbol_table_read (struct snd_info_entry *entry,
 			module_str = ins->symbol_table.symbols[i].module->module_name;
 		}
 
-    
 		snd_iprintf(buffer, "%04X <%02X> %s [%s]\n",
 			    ins->symbol_table.symbols[i].address,
 			    ins->symbol_table.symbols[i].symbol_type,
@@ -1429,7 +1428,6 @@ int cs46xx_dsp_scb_and_task_init (struct snd_cs46xx *chip)
 							     SCB_ON_PARENT_NEXT_SCB);
 	if (!rear_codec_out_scb) goto _fail_end;
 	
-	
 	/* create the rear PCM channel  mixer SCB */
 	rear_mix_scb = cs46xx_dsp_create_mix_only_scb(chip,"RearMixerSCB",
 						      MIX_SAMPLE_BUF3,
@@ -1448,7 +1446,6 @@ int cs46xx_dsp_scb_and_task_init (struct snd_cs46xx *chip)
 								     rear_codec_out_scb,
 								     SCB_ON_PARENT_NEXT_SCB);
 		if (!clfe_codec_out_scb) goto _fail_end;
-		
 		
 		/* create the rear PCM channel  mixer SCB */
 		ins->center_lfe_mix_scb = cs46xx_dsp_create_mix_only_scb(chip,"CLFEMixerSCB",
@@ -1475,7 +1472,6 @@ int cs46xx_dsp_scb_and_task_init (struct snd_cs46xx *chip)
 							     clfe_codec_out_scb,
 							     SCB_ON_PARENT_NEXT_SCB);
 
-    
 	if (!magic_snoop_scb) goto _fail_end;
 	ins->ref_snoop_scb = magic_snoop_scb;
 

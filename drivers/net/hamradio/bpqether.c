@@ -509,7 +509,6 @@ static int bpq_new_device(struct net_device *edev)
 	if (!ndev)
 		return -ENOMEM;
 
-		
 	bpq = netdev_priv(ndev);
 	dev_hold(edev);
 	bpq->ethdev = edev;

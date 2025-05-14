@@ -181,7 +181,6 @@ int lmc_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd) /*fold00*/
 		break;
 	    }
 
-            
 	    if (new_type == old_type)
 	    {
 		ret = 0 ;
@@ -420,8 +419,6 @@ int lmc_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd) /*fold00*/
                     }
 		    spin_unlock_irqrestore(&sc->lmc_lock, flags);
                     
-                    
-
                     ret = 0x0;
 
                 }
@@ -1400,7 +1397,6 @@ static irqreturn_t lmc_interrupt (int irq, void *dev_instance) /*fold00*/
 
         }
 
-        
         if(max_work-- <= 0)
             break;
         

@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * Broadcom GENET MDIO routines
  *
@@ -220,20 +223,6 @@ void bcmgenet_phy_power_set(struct net_device *dev, bool enable)
 	udelay(60);
 }
 
-static void bcmgenet_internal_phy_setup(struct net_device *dev)
-{
-	struct bcmgenet_priv *priv = netdev_priv(dev);
-	u32 reg;
-
-	/* Power up PHY */
-	bcmgenet_phy_power_set(dev, true);
-	/* enable APD */
-	reg = bcmgenet_ext_readl(priv, EXT_EXT_PWR_MGMT);
-	reg |= EXT_PWR_DN_EN_LD;
-	bcmgenet_ext_writel(priv, reg, EXT_EXT_PWR_MGMT);
-	bcmgenet_mii_reset(dev);
-}
-
 static void bcmgenet_moca_phy_setup(struct bcmgenet_priv *priv)
 {
 	u32 reg;
@@ -281,7 +270,6 @@ int bcmgenet_mii_config(struct net_device *dev)
 
 		if (priv->internal_phy) {
 			phy_name = "internal PHY";
-			bcmgenet_internal_phy_setup(dev);
 		} else if (priv->phy_interface == PHY_INTERFACE_MODE_MOCA) {
 			phy_name = "MoCA";
 			bcmgenet_moca_phy_setup(priv);
@@ -401,9 +389,13 @@ int bcmgenet_mii_probe(struct net_device *dev)
 	 * Ethernet MAC ISRs
 	 */
 	if (priv->internal_phy)
+#if defined(MY_DEF_HERE)
+		priv->mii_bus->irq[phydev->mdio.addr] = PHY_IGNORE_INTERRUPT;
+#else /* MY_DEF_HERE */
 		priv->mii_bus->irq[phydev->addr] = PHY_IGNORE_INTERRUPT;
 	else
 		priv->mii_bus->irq[phydev->addr] = PHY_POLL;
+#endif /* MY_DEF_HERE */
 
 	return 0;
 }
@@ -477,12 +469,16 @@ static int bcmgenet_mii_alloc(struct bcmgenet_priv *priv)
 	snprintf(bus->id, MII_BUS_ID_SIZE, "%s-%d",
 		 priv->pdev->name, priv->pdev->id);
 
+#if defined(MY_DEF_HERE)
+//do nothing
+#else /* MY_DEF_HERE */
 	bus->irq = kcalloc(PHY_MAX_ADDR, sizeof(int), GFP_KERNEL);
 	if (!bus->irq) {
 		mdiobus_free(priv->mii_bus);
 		return -ENOMEM;
 	}
 
+#endif /* MY_DEF_HERE */
 	return 0;
 }
 
@@ -581,7 +577,11 @@ static int bcmgenet_mii_pd_init(struct bcmgenet_priv *priv)
 		}
 
 		if (pd->phy_address >= 0 && pd->phy_address < PHY_MAX_ADDR)
+#if defined(MY_DEF_HERE)
+			phydev = mdiobus_get_phy(mdio, pd->phy_address);
+#else /* MY_DEF_HERE */
 			phydev = mdio->phy_map[pd->phy_address];
+#endif /* MY_DEF_HERE */
 		else
 			phydev = phy_find_first(mdio);
 
@@ -648,7 +648,11 @@ int bcmgenet_mii_init(struct net_device *dev)
 out:
 	of_node_put(priv->phy_dn);
 	mdiobus_unregister(priv->mii_bus);
+#if defined(MY_DEF_HERE)
+//do nothing
+#else /* MY_DEF_HERE */
 	kfree(priv->mii_bus->irq);
+#endif /* MY_DEF_HERE */
 	mdiobus_free(priv->mii_bus);
 	return ret;
 }
@@ -659,6 +663,10 @@ void bcmgenet_mii_exit(struct net_device *dev)
 
 	of_node_put(priv->phy_dn);
 	mdiobus_unregister(priv->mii_bus);
+#if defined(MY_DEF_HERE)
+//do nothing
+#else /* MY_DEF_HERE */
 	kfree(priv->mii_bus->irq);
+#endif /* MY_DEF_HERE */
 	mdiobus_free(priv->mii_bus);
 }

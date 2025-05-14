@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * (C) Copyright Linus Torvalds 1999
  * (C) Copyright Johannes Erdfelt 1999-2001
@@ -966,7 +969,7 @@ static void usb_bus_init (struct usb_bus *bus)
 	bus->bandwidth_allocated = 0;
 	bus->bandwidth_int_reqs  = 0;
 	bus->bandwidth_isoc_reqs = 0;
-	mutex_init(&bus->usb_address0_mutex);
+	mutex_init(&bus->devnum_next_mutex);
 
 	INIT_LIST_HEAD (&bus->bus_list);
 }
@@ -987,13 +990,63 @@ static int usb_register_bus(struct usb_bus *bus)
 {
 	int result = -E2BIG;
 	int busnum;
+#ifdef MY_ABC_HERE
+	struct usb_hcd *usb_hcd = bus_to_hcd(bus);
+#endif /* MY_ABC_HERE */
 
 	mutex_lock(&usb_bus_list_lock);
+#ifdef MY_ABC_HERE
+	/* This is a workaround for random order of bus number
+	 * assignment happened only on platform RTD1296.
+	 * The primary hcd should be USB2.0 hcd.
+	 */
+
+	switch (usb_hcd->speed) {
+	case HCD_USB2:
+		if (0 == strncmp(bus->bus_name, "98013000.ehci", 13)) {
+			busnum = 1;
+		} else {
+			result = -EINVAL;
+			goto error_find_busnum;
+		}
+		break;
+	case HCD_USB3:
+	case HCD_USB31:
+		if (0 == strncmp(bus->bus_name, "xhci-hcd.2.auto", 15)) {
+			if (usb_hcd_is_primary_hcd(usb_hcd))
+				busnum = 2;
+			else
+				busnum = 3;
+		} else if (0 == strncmp(bus->bus_name, "xhci-hcd.5.auto", 15)) {
+			if (usb_hcd_is_primary_hcd(usb_hcd))
+				busnum = 4;
+			else
+				busnum = 5;
+		} else if (0 == strncmp(bus->bus_name, "xhci-hcd.8.auto", 15)) {
+			if (usb_hcd_is_primary_hcd(usb_hcd))
+				busnum = 6;
+			else
+				busnum = 7;
+		} else {
+			result = -EINVAL;
+			goto error_find_busnum;
+		}
+		break;
+	default:
+		busnum = find_next_zero_bit(busmap, USB_MAXBUS, 1);
+		if (busnum >= USB_MAXBUS) {
+			printk (KERN_ERR "%s: too many buses\n", usbcore_name);
+			goto error_find_busnum;
+		}
+	}
+
+#else /* MY_ABC_HERE */
 	busnum = find_next_zero_bit(busmap, USB_MAXBUS, 1);
 	if (busnum >= USB_MAXBUS) {
 		printk (KERN_ERR "%s: too many buses\n", usbcore_name);
 		goto error_find_busnum;
 	}
+#endif /* MY_ABC_HERE */
 	set_bit(busnum, busmap);
 	bus->busnum = busnum;
 
@@ -1078,7 +1131,7 @@ static int register_root_hub(struct usb_hcd *hcd)
 		retval = usb_get_bos_descriptor(usb_dev);
 		if (!retval) {
 			usb_dev->lpm_capable = usb_device_supports_lpm(usb_dev);
-		} else if (usb_dev->speed == USB_SPEED_SUPER) {
+		} else if (usb_dev->speed >= USB_SPEED_SUPER) {
 			mutex_unlock(&usb_bus_list_lock);
 			dev_dbg(parent_dev, "can't read %s bos descriptor %d\n",
 					dev_name(&usb_dev->dev), retval);
@@ -2112,7 +2165,7 @@ int usb_alloc_streams(struct usb_interface *interface,
 	hcd = bus_to_hcd(dev->bus);
 	if (!hcd->driver->alloc_streams || !hcd->driver->free_streams)
 		return -EINVAL;
-	if (dev->speed != USB_SPEED_SUPER)
+	if (dev->speed < USB_SPEED_SUPER)
 		return -EINVAL;
 	if (dev->state < USB_STATE_CONFIGURED)
 		return -ENODEV;
@@ -2160,7 +2213,7 @@ int usb_free_streams(struct usb_interface *interface,
 
 	dev = interface_to_usbdev(interface);
 	hcd = bus_to_hcd(dev->bus);
-	if (dev->speed != USB_SPEED_SUPER)
+	if (dev->speed < USB_SPEED_SUPER)
 		return -EINVAL;
 
 	/* Double-free is not allowed */
@@ -2497,6 +2550,14 @@ struct usb_hcd *usb_create_shared_hcd(const struct hc_driver *driver,
 		return NULL;
 	}
 	if (primary_hcd == NULL) {
+		hcd->address0_mutex = kmalloc(sizeof(*hcd->address0_mutex),
+				GFP_KERNEL);
+		if (!hcd->address0_mutex) {
+			kfree(hcd);
+			dev_dbg(dev, "hcd address0 mutex alloc failed\n");
+			return NULL;
+		}
+		mutex_init(hcd->address0_mutex);
 		hcd->bandwidth_mutex = kmalloc(sizeof(*hcd->bandwidth_mutex),
 				GFP_KERNEL);
 		if (!hcd->bandwidth_mutex) {
@@ -2508,6 +2569,7 @@ struct usb_hcd *usb_create_shared_hcd(const struct hc_driver *driver,
 		dev_set_drvdata(dev, hcd);
 	} else {
 		mutex_lock(&usb_port_peer_mutex);
+		hcd->address0_mutex = primary_hcd->address0_mutex;
 		hcd->bandwidth_mutex = primary_hcd->bandwidth_mutex;
 		hcd->primary_hcd = primary_hcd;
 		primary_hcd->primary_hcd = primary_hcd;
@@ -2564,24 +2626,23 @@ EXPORT_SYMBOL_GPL(usb_create_hcd);
  * Don't deallocate the bandwidth_mutex until the last shared usb_hcd is
  * deallocated.
  *
- * Make sure to only deallocate the bandwidth_mutex when the primary HCD is
- * freed.  When hcd_release() is called for either hcd in a peer set
- * invalidate the peer's ->shared_hcd and ->primary_hcd pointers to
- * block new peering attempts
+ * Make sure to deallocate the bandwidth_mutex only when the last HCD is
+ * freed.  When hcd_release() is called for either hcd in a peer set,
+ * invalidate the peer's ->shared_hcd and ->primary_hcd pointers.
  */
 static void hcd_release(struct kref *kref)
 {
 	struct usb_hcd *hcd = container_of (kref, struct usb_hcd, kref);
 
 	mutex_lock(&usb_port_peer_mutex);
-	if (usb_hcd_is_primary_hcd(hcd))
-		kfree(hcd->bandwidth_mutex);
 	if (hcd->shared_hcd) {
 		struct usb_hcd *peer = hcd->shared_hcd;
 
 		peer->shared_hcd = NULL;
-		if (peer->primary_hcd == hcd)
-			peer->primary_hcd = NULL;
+		peer->primary_hcd = NULL;
+	} else {
+		kfree(hcd->address0_mutex);
+		kfree(hcd->bandwidth_mutex);
 	}
 	mutex_unlock(&usb_port_peer_mutex);
 	kfree(hcd);
@@ -2667,17 +2728,39 @@ static void usb_put_invalidate_rhdev(struct usb_hcd *hcd)
 }
 
 /**
+#if defined(MY_DEF_HERE)
+ * usb_add_hcd_with_phy_name - finish generic HCD structure initialization
+ * and register with generic phy name
+#else // MY_DEF_HERE
  * usb_add_hcd - finish generic HCD structure initialization and register
+#endif // MY_DEF_HERE
  * @hcd: the usb_hcd structure to initialize
  * @irqnum: Interrupt line to allocate
  * @irqflags: Interrupt type flags
+#if defined(MY_DEF_HERE)
+ * @phy_name: generic phy name
+#endif // MY_DEF_HERE
  *
+#if defined(MY_DEF_HERE)
+ * Finish the remaining parts of generic HCD initialization with generic phy
+ * name: allocate the buffers of consistent memory, register the bus,
+ * request the IRQ line, and call the driver's reset() and start() routines.
+#else // MY_DEF_HERE
  * Finish the remaining parts of generic HCD initialization: allocate the
  * buffers of consistent memory, register the bus, request the IRQ line,
  * and call the driver's reset() and start() routines.
+#endif // MY_DEF_HERE
  */
+#if defined(MY_DEF_HERE)
+int usb_add_hcd_with_phy_name(struct usb_hcd *hcd,
+			      unsigned int irqnum,
+			      unsigned long irqflags,
+			      const char *phy_name)
+
+#else /* MY_DEF_HERE */
 int usb_add_hcd(struct usb_hcd *hcd,
 		unsigned int irqnum, unsigned long irqflags)
+#endif /* MY_DEF_HERE */
 {
 	int retval;
 	struct usb_device *rhdev;
@@ -2701,7 +2784,16 @@ int usb_add_hcd(struct usb_hcd *hcd,
 	}
 
 	if (IS_ENABLED(CONFIG_GENERIC_PHY) && !hcd->phy) {
+#if defined(MY_DEF_HERE)
+		struct phy *phy;
+
+		if (phy_name == NULL)
+			phy = phy_get(hcd->self.controller, "usb");
+		else
+			phy = phy_get(hcd->self.controller, phy_name);
+#else /* MY_DEF_HERE */
 		struct phy *phy = phy_get(hcd->self.controller, "usb");
+#endif /* MY_DEF_HERE */
 
 		if (IS_ERR(phy)) {
 			retval = PTR_ERR(phy);
@@ -2900,6 +2992,25 @@ err_phy:
 	}
 	return retval;
 }
+#if defined(MY_DEF_HERE)
+EXPORT_SYMBOL_GPL(usb_add_hcd_with_phy_name);
+
+/**
+ * usb_add_hcd - finish generic HCD structure initialization and register
+ * @hcd: the usb_hcd structure to initialize
+ * @irqnum: Interrupt line to allocate
+ * @irqflags: Interrupt type flags
+ *
+ * Finish the remaining parts of generic HCD initialization: allocate the
+ * buffers of consistent memory, register the bus, request the IRQ line,
+ * and call the driver's reset() and start() routines.
+ */
+int usb_add_hcd(struct usb_hcd *hcd,
+		unsigned int irqnum, unsigned long irqflags)
+{
+	return usb_add_hcd_with_phy_name(hcd, irqnum, irqflags, NULL);
+}
+#endif /* MY_DEF_HERE */
 EXPORT_SYMBOL_GPL(usb_add_hcd);
 
 /**

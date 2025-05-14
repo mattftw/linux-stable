@@ -542,8 +542,6 @@ static void osst_write_behind_check(struct osst_tape *STp)
 	return;
 }
 
-
-
 /* Onstream specific Routines */
 /*
  * Initialize the OnStream AUX
@@ -3360,7 +3358,6 @@ static void reset_state(struct osst_tape *STp)
 	}
 }
 				
-
 /* Entry points to osst */
 
 /* Write command */
@@ -5290,8 +5287,6 @@ static long osst_compat_ioctl(struct file * file, unsigned int cmd_in, unsigned 
 }
 #endif
 
-
-
 /* Memory handling routines */
 
 /* Try to allocate a new tape buffer skeleton. Caller must not hold os_scsi_tapes_lock */
@@ -5558,7 +5553,6 @@ static int osst_copy_from_buffer(struct osst_buffer *st_bp, unsigned char *ptr)
 	return 0;
 }
 
-
 /* Module housekeeping */
 
 static void validate_options (void)

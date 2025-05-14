@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * Open Host Controller Interface (OHCI) driver for USB.
  *
@@ -72,7 +75,7 @@
 static const char	hcd_name [] = "ohci_hcd";
 
 #define	STATECHANGE_DELAY	msecs_to_jiffies(300)
-#define	IO_WATCHDOG_DELAY	msecs_to_jiffies(250)
+#define	IO_WATCHDOG_DELAY	msecs_to_jiffies(275)
 
 #include "ohci.h"
 #include "pci-quirks.h"
@@ -1254,6 +1257,13 @@ MODULE_LICENSE ("GPL");
 #include "ohci-tilegx.c"
 #define PLATFORM_DRIVER		ohci_hcd_tilegx_driver
 #endif
+
+#if defined(MY_ABC_HERE) || defined(CONFIG_SYNO_LSP_RTD1619)
+#ifdef CONFIG_USB_OHCI_RTK
+#include "ohci-rtk.c"
+#define	PLATFORM_DRIVER		ohci_rtk_driver
+#endif /* CONFIG_USB_OHCI_RTK */
+#endif /* MY_ABC_HERE || CONFIG_SYNO_LSP_RTD1619 */
 
 static int __init ohci_hcd_mod_init(void)
 {

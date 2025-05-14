@@ -2592,7 +2592,6 @@ static int snd_rme9652_probe(struct pci_dev *pci,
 	sprintf(card->longname, "%s at 0x%lx, irq %d",
 		card->shortname, rme9652->port, rme9652->irq);
 
-	
 	if ((err = snd_card_register(card)) < 0) {
 		snd_card_free(card);
 		return err;

@@ -877,7 +877,6 @@ static void radeon_pm_setup_for_suspend(struct radeonfb_info *rinfo)
 
 	OUTPLL(pllSCLK_MORE_CNTL, sclk_more_cntl);		
 
-	
 	mclk_cntl = INPLL( pllMCLK_CNTL);
 	mclk_cntl &= ~(	MCLK_CNTL__FORCE_MCLKA |
 			MCLK_CNTL__FORCE_MCLKB |
@@ -893,7 +892,6 @@ static void radeon_pm_setup_for_suspend(struct radeonfb_info *rinfo)
 			   | VCLK_ECP_CNTL__PIXCLK_DAC_ALWAYS_ONb);
 	vclk_ecp_cntl |= VCLK_ECP_CNTL__ECP_FORCE_ON;
 	OUTPLL( pllVCLK_ECP_CNTL, vclk_ecp_cntl);
-	
 	
 	pixclks_cntl = INPLL( pllPIXCLKS_CNTL);
 	pixclks_cntl &= ~(	PIXCLKS_CNTL__PIXCLK_GV_ALWAYS_ONb | 
@@ -1033,7 +1031,6 @@ static void radeon_pm_setup_for_suspend(struct radeonfb_info *rinfo)
 	clk_pin_cntl 	= INPLL( pllCLK_PIN_CNTL);
 	disp_pwr_man	= INREG(DISP_PWR_MAN);
 		
-	
 	/* D2 */
 	clk_pwrmgt_cntl |= CLK_PWRMGT_CNTL__DISP_PM;
 	pll_pwrmgt_cntl |= PLL_PWRMGT_CNTL__MOBILE_SU | PLL_PWRMGT_CNTL__SU_SCLK_USE_BCLK;

@@ -319,7 +319,6 @@ _dsp_create_generic_scb (struct snd_cs46xx *chip, char * name, u32 * scb_data, u
 	scb->parent_scb_ptr = parent_scb;
 	scb->task_entry = task_entry;
 
-  
 	/* update parent SCB */
 	if (scb->parent_scb_ptr) {
 #if 0
@@ -449,7 +448,6 @@ cs46xx_dsp_create_codec_out_scb(struct snd_cs46xx * chip, char * codec_name,
 		0x0000,0x0080,          /* (!AC97!) COexpVolChangeRate:COscaleShiftCount */
 		0,child_scb_addr        /* COreserved - need child scb to work with rom code */
 	};
-  
   
 	scb = cs46xx_dsp_create_generic_scb(chip,codec_name,(u32 *)&codec_out_scb,
 					    dest,"S16_CODECOUTPUTTASK",parent_scb,
@@ -1368,7 +1366,6 @@ cs46xx_dsp_create_pcm_channel (struct snd_cs46xx * chip,
 		ins->nsrc_scb ++;
 	} 
   
-  
 	snprintf (scb_name,DSP_MAX_SCB_NAME,"PCMReader_SCB%d",pcm_index);
 
 	dev_dbg(chip->card->dev, "dsp_spos: creating PCM \"%s\" (%d)\n",
@@ -1691,7 +1688,6 @@ int cs46xx_dsp_enable_spdif_out (struct snd_cs46xx *chip)
 									  ins->asynch_tx_scb,
 									  SCB_ON_PARENT_SUBLIST_SCB);
   
-	
 	if (!ins->spdif_pcm_input_scb) return -ENOMEM;
 
 	/* monitor state */

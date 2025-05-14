@@ -313,7 +313,6 @@ struct dsp_timing_master_scb {
 	    extra_sample_accum
 	)
 
-  
 	/* Initial values are xxxx:0000
 	   hi: Current CODEC output FIFO pointer
 	       (0 to 0x0f)

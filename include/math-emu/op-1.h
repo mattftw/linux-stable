@@ -243,7 +243,6 @@
     R##_f = _q | (_r != 0);				\
   } while (0)
   
-  
 /*
  * Square root algorithms:
  * We have just one right now, maybe Newton approximation

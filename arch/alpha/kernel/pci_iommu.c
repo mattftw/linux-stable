@@ -836,7 +836,6 @@ static int alpha_pci_supported(struct device *dev, u64 mask)
 	return 0;
 }
 
-
 /*
  * AGP GART extensions to the IOMMU
  */

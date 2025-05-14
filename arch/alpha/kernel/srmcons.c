@@ -239,7 +239,6 @@ srmcons_init(void)
 }
 device_initcall(srmcons_init);
 
-
 /*
  * The console driver
  */

@@ -210,7 +210,6 @@ unsigned int aac_command_normal(struct aac_queue *q)
 		fib->data = hw_fib->data;
 		fib->dev = dev;
 		
-				
 		if (dev->aif_thread && fib != &fibctx) {
 		        list_add_tail(&fib->fiblink, &q->cmdq);
 	 	        aac_consumer_free(dev, q, HostNormCmdQueue);

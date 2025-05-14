@@ -2,7 +2,6 @@
  
 /* Written 1995-2000 by Werner Almesberger, EPFL LRC/ICA */
  
- 
 #ifndef DRIVER_ATM_ENI_H
 #define DRIVER_ATM_ENI_H
 

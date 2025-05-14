@@ -239,6 +239,8 @@ static int skl_free(struct hdac_ext_bus *ebus)
 
 	snd_hdac_ext_bus_exit(ebus);
 
+	if (IS_ENABLED(CONFIG_SND_SOC_HDAC_HDMI))
+		snd_hdac_i915_exit(&ebus->bus);
 	return 0;
 }
 
@@ -464,8 +466,10 @@ static int skl_probe(struct pci_dev *pci,
 
 	skl->nhlt = skl_nhlt_init(bus->dev);
 
-	if (skl->nhlt == NULL)
+	if (skl->nhlt == NULL) {
+		err = -ENODEV;
 		goto out_free;
+	}
 
 	pci_set_drvdata(skl->pci, ebus);
 

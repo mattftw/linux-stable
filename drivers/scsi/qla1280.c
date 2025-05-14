@@ -1082,7 +1082,6 @@ qla1280_biosparam(struct scsi_device *sdev, struct block_device *bdev,
 	return 0;
 }
 
- 
 /* disable risc and host interrupts */
 static inline void
 qla1280_disable_intrs(struct scsi_qla_host *ha)

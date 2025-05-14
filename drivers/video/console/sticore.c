@@ -356,8 +356,6 @@ static int sti_font_setup(char *str)
 __setup("sti_font=", sti_font_setup);
 #endif
 
-
-	
 static void sti_dump_globcfg(struct sti_glob_cfg *glob_cfg,
 			     unsigned int sti_mem_request)
 {

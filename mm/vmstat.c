@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  *  linux/mm/vmstat.c
  *
@@ -736,6 +739,7 @@ const char * const vmstat_text[] = {
 	"nr_slab_unreclaimable",
 	"nr_page_table_pages",
 	"nr_kernel_stack",
+	"nr_overhead",
 	"nr_unstable",
 	"nr_bounce",
 	"nr_vmscan_write",
@@ -865,7 +869,6 @@ const char * const vmstat_text[] = {
 #ifdef CONFIG_DEBUG_VM_VMACACHE
 	"vmacache_find_calls",
 	"vmacache_find_hits",
-	"vmacache_full_flushes",
 #endif
 #endif /* CONFIG_VM_EVENTS_COUNTERS */
 };
@@ -923,7 +926,11 @@ static char * const migratetype_names[MIGRATE_TYPES] = {
 	"Unmovable",
 	"Movable",
 	"Reclaimable",
+#if defined(MY_DEF_HERE) && !defined(MY_DEF_HERE)
+	"Reserve",
+#else /* MY_DEF_HERE && !MY_DEF_HERE */
 	"HighAtomic",
+#endif /* MY_DEF_HERE && !MY_DEF_HERE */
 #ifdef CONFIG_CMA
 	"CMA",
 #endif

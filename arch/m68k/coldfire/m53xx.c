@@ -388,7 +388,6 @@ void sdramc_init(void)
 		MCF_SDRAMC_SDCFG2_BL(SDRAM_BL - 1),
 		MCF_SDRAMC_SDCFG2);
 
-            
 	/*
 	 * Precharge and enable write to SDMR
 	 */

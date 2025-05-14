@@ -48,7 +48,7 @@ struct posix_acl *btrfs_get_acl(struct inode *inode, int type)
 
 	size = __btrfs_getxattr(inode, name, "", 0);
 	if (size > 0) {
-		value = kzalloc(size, GFP_NOFS);
+		value = kzalloc(size, GFP_KERNEL);
 		if (!value)
 			return ERR_PTR(-ENOMEM);
 		size = __btrfs_getxattr(inode, name, value, size);
@@ -83,11 +83,9 @@ static int __btrfs_set_acl(struct btrfs_trans_handle *trans,
 	case ACL_TYPE_ACCESS:
 		name = POSIX_ACL_XATTR_ACCESS;
 		if (acl) {
-			ret = posix_acl_equiv_mode(acl, &inode->i_mode);
-			if (ret < 0)
+			ret = posix_acl_update_mode(inode, &inode->i_mode, &acl);
+			if (ret)
 				return ret;
-			if (ret == 0)
-				acl = NULL;
 		}
 		ret = 0;
 		break;
@@ -102,7 +100,7 @@ static int __btrfs_set_acl(struct btrfs_trans_handle *trans,
 
 	if (acl) {
 		size = posix_acl_xattr_size(acl->a_count);
-		value = kmalloc(size, GFP_NOFS);
+		value = kmalloc(size, GFP_KERNEL);
 		if (!value) {
 			ret = -ENOMEM;
 			goto out;

@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  *  linux/drivers/message/fusion/mptscsih.c
  *      For use with LSI PCI chip/adapter(s)
@@ -2122,6 +2125,14 @@ mptscsih_bios_param(struct scsi_device * sdev, struct block_device *bdev,
 	return 0;
 }
 
+#if defined(MY_DEF_HERE) && defined(MY_ABC_HERE)
+int
+mptscsih_index_get(struct Scsi_Host *host, uint channel, uint id, uint lun)
+{
+	return id >= 1 ? id - 1 : 0;
+}
+#endif /* MY_DEF_HERE && MY_ABC_HERE */
+
 /* Search IOC page 3 to determine if this is hidden physical disk
  *
  */
@@ -3257,6 +3268,9 @@ EXPORT_SYMBOL(mptscsih_dev_reset);
 EXPORT_SYMBOL(mptscsih_bus_reset);
 EXPORT_SYMBOL(mptscsih_host_reset);
 EXPORT_SYMBOL(mptscsih_bios_param);
+#if defined(MY_DEF_HERE) && defined(MY_ABC_HERE)
+EXPORT_SYMBOL(mptscsih_index_get);
+#endif /* MY_DEF_HERE && MY_ABC_HERE */
 EXPORT_SYMBOL(mptscsih_io_done);
 EXPORT_SYMBOL(mptscsih_taskmgmt_complete);
 EXPORT_SYMBOL(mptscsih_scandv_complete);

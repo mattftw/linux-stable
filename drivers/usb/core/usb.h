@@ -45,7 +45,7 @@ static inline unsigned usb_get_max_power(struct usb_device *udev,
 		struct usb_host_config *c)
 {
 	/* SuperSpeed power is in 8 mA units; others are in 2 mA units */
-	unsigned mul = (udev->speed == USB_SPEED_SUPER ? 8 : 2);
+	unsigned mul = (udev->speed >= USB_SPEED_SUPER ? 8 : 2);
 
 	return c->desc.bMaxPower * mul;
 }
@@ -68,6 +68,23 @@ extern void usb_hub_cleanup(void);
 extern int usb_major_init(void);
 extern void usb_major_cleanup(void);
 extern int usb_device_supports_lpm(struct usb_device *udev);
+
+#if defined(CONFIG_USB_ETRON_HUB)
+extern int usb_is_etron_hcd(struct usb_device *udev);
+extern void ethub_usb_kick_hub_wq(struct usb_device *hdev);
+extern void ethub_usb_wakeup_notification(struct usb_device *hdev,
+		unsigned int portnum);
+extern int ethub_usb_remove_device(struct usb_device *udev);
+extern void ethub_usb_set_device_state(struct usb_device *udev,
+		enum usb_device_state new_state);
+extern void ethub_usb_disconnect(struct usb_device **pdev);
+extern int ethub_usb_new_device(struct usb_device *udev);
+extern int ethub_usb_port_suspend(struct usb_device *udev, pm_message_t msg);
+extern int ethub_usb_port_resume(struct usb_device *udev, pm_message_t msg);
+extern int ethub_usb_reset_device(struct usb_device *udev);
+extern int ethub_init(void);
+extern void ethub_cleanup(void);
+#endif /* CONFIG_USB_ETRON_HUB */
 
 #ifdef	CONFIG_PM
 

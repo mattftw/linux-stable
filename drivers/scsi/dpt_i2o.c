@@ -2951,7 +2951,6 @@ static s32 adpt_i2o_status_get(adpt_hba* pHba)
 		schedule_timeout_uninterruptible(1);
 	} while(m==EMPTY_QUEUE);
 
-	
 	msg=(u32 __iomem *)(pHba->msg_addr_virt+m);
 
 	writel(NINE_WORD_MSG_SIZE|SGL_OFFSET_0, &msg[0]);

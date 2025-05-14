@@ -33,7 +33,6 @@
 # error NR_IRQS < MARVEL_NR_IRQS !!!
 #endif
 
-
 /*
  * Interrupt handling.
  */
