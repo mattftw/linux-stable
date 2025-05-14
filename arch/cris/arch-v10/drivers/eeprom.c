@@ -365,8 +365,6 @@ int __init eeprom_init(void)
      break;
   }
 
-  
-
   eeprom_disable_write_protect();
 
   return 0;
@@ -527,7 +525,6 @@ static ssize_t eeprom_write(struct file * file, const char * buf, size_t count,
     written = 0;
     p = *off;
    
-    
     while( (written < count) && (p < eeprom.size))
     {
       /* address the eeprom */
@@ -714,7 +711,6 @@ static int eeprom_address(unsigned long addr)
     }
   }    
 
-  
   eeprom.retry_cnt_addr = i;
   D(printk("%i\n", eeprom.retry_cnt_addr));
   if(eeprom.retry_cnt_addr == EEPROM_RETRIES)

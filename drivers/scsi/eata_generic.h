@@ -49,7 +49,6 @@
 #define NEC_ID2         0xa3
 #define NEC_ID3         0x82
 
- 
 #define EATA_CP_SIZE	 44
 
 #define MAX_PCI_DEVICES  32	       /* Maximum # Of Devices Per Bus	 */

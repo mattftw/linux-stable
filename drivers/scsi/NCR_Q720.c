@@ -251,7 +251,6 @@ NCR_Q720_probe(struct device *dev)
 
 	irq = readb(mem_base + 5) & 0x0f;
 	
-	
 	/* now do the bus related transforms */
 	irq = mca_device_transform_irq(mca_dev, irq);
 

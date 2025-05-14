@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  *   fs/cifs/smb2pdu.c
  *
@@ -77,8 +80,11 @@ static const int smb2_req_struct_sizes[NUMBER_OF_SMB2_COMMANDS] = {
 	/* SMB2_OPLOCK_BREAK */ 24 /* BB this is 36 for LEASE_BREAK variant */
 };
 
-
+#ifdef MY_ABC_HERE
+void
+#else
 static void
+#endif /* MY_ABC_HERE */
 smb2_hdr_assemble(struct smb2_hdr *hdr, __le16 smb2_cmd /* command */ ,
 		  const struct cifs_tcon *tcon)
 {
@@ -103,7 +109,21 @@ smb2_hdr_assemble(struct smb2_hdr *hdr, __le16 smb2_cmd /* command */ ,
 	hdr->ProtocolId[3] = 'B';
 	hdr->StructureSize = cpu_to_le16(64);
 	hdr->Command = smb2_cmd;
-	hdr->CreditRequest = cpu_to_le16(2); /* BB make this dynamic */
+	if (tcon && tcon->ses && tcon->ses->server) {
+		struct TCP_Server_Info *server = tcon->ses->server;
+
+		spin_lock(&server->req_lock);
+		/* Request up to 2 credits but don't go over the limit. */
+		if (server->credits >= SMB2_MAX_CREDITS_AVAILABLE)
+			hdr->CreditRequest = cpu_to_le16(0);
+		else
+			hdr->CreditRequest = cpu_to_le16(
+				min_t(int, SMB2_MAX_CREDITS_AVAILABLE -
+						server->credits, 2));
+		spin_unlock(&server->req_lock);
+	} else {
+		hdr->CreditRequest = cpu_to_le16(2);
+	}
 	hdr->ProcessId = cpu_to_le32((__u16)current->tgid);
 
 	if (!tcon)
@@ -148,6 +168,9 @@ smb2_reconnect(__le16 smb2_command, struct cifs_tcon *tcon)
 	struct nls_table *nls_codepage;
 	struct cifs_ses *ses;
 	struct TCP_Server_Info *server;
+#ifdef MY_ABC_HERE
+	u16 origin_dialect; /* dialect index that server chose */
+#endif /* MY_ABC_HERE */
 
 	/*
 	 * SMB2s NegProt, SessSetup, Logoff do not have tcon yet so
@@ -219,16 +242,34 @@ smb2_reconnect(__le16 smb2_command, struct cifs_tcon *tcon)
 		}
 	}
 
+#ifdef MY_ABC_HERE
+	if (SMB20_PROT_ID > server->dialect) {
+		cifs_dbg(FYI, "(%s) origin_dialect=0x%x, server->dialect=0x%x\n", __func__, origin_dialect, server->dialect);
+		return -EAGAIN;
+	}
+	origin_dialect = server->dialect;
+#endif /* MY_ABC_HERE */
 	if (!tcon->ses->need_reconnect && !tcon->need_reconnect)
 		return rc;
 
+#ifdef MY_ABC_HERE
+	nls_codepage = load_nls("utf8");
+#else
 	nls_codepage = load_nls_default();
+#endif /* MY_ABC_HERE */
 
 	/*
 	 * need to prevent multiple threads trying to simultaneously reconnect
 	 * the same SMB session
 	 */
+#ifdef MY_ABC_HERE
+	if (!mutex_trylock(&tcon->ses->session_mutex)) {
+		rc = -EINPROGRESS;
+		goto out;
+	}
+#else
 	mutex_lock(&tcon->ses->session_mutex);
+#endif /* MY_ABC_HERE */
 	rc = cifs_negotiate_protocol(0, tcon->ses);
 	if (!rc && tcon->ses->need_reconnect)
 		rc = cifs_setup_session(0, tcon->ses, nls_codepage);
@@ -239,12 +280,23 @@ smb2_reconnect(__le16 smb2_command, struct cifs_tcon *tcon)
 	}
 
 	cifs_mark_open_files_invalid(tcon);
+#ifdef MY_ABC_HERE
+	rc = ses->server->ops->tree_connect(0, tcon->ses, tcon->treeName, tcon, nls_codepage);
+#else
 	rc = SMB2_tcon(0, tcon->ses, tcon->treeName, tcon, nls_codepage);
+#endif /* MY_ABC_HERE */
 	mutex_unlock(&tcon->ses->session_mutex);
 	cifs_dbg(FYI, "reconnect tcon rc = %d\n", rc);
 	if (rc)
 		goto out;
 	atomic_inc(&tconInfoReconnectCount);
+#ifdef MY_ABC_HERE
+	if (server->dialect != origin_dialect ||
+	    SMB20_PROT_ID > server->dialect) {
+		cifs_dbg(FYI, "(%s) SMB2 reconnect dialect not match! origin=0x%x, current=0x%x\n", __func__, origin_dialect, server->dialect);
+		rc = -EAGAIN;
+	}
+#endif /* MY_ABC_HERE */
 out:
 	/*
 	 * Check if handle based operation so we know whether we can continue
@@ -264,7 +316,7 @@ out:
 	case SMB2_CHANGE_NOTIFY:
 	case SMB2_QUERY_INFO:
 	case SMB2_SET_INFO:
-		return -EAGAIN;
+		rc = -EAGAIN;
 	}
 	unload_nls(nls_codepage);
 	return rc;
@@ -591,8 +643,9 @@ SMB2_sess_setup(const unsigned int xid, struct cifs_ses *ses,
 	u16 blob_length = 0;
 	struct key *spnego_key = NULL;
 	char *security_blob = NULL;
-	char *ntlmssp_blob = NULL;
+	unsigned char *ntlmssp_blob = NULL;
 	bool use_spnego = false; /* else use raw ntlmssp */
+	u64 previous_session = ses->Suid;
 
 	cifs_dbg(FYI, "Session Setup\n");
 
@@ -630,6 +683,10 @@ ssetup_ntlmssp_authenticate:
 		return rc;
 
 	req->hdr.SessionId = 0; /* First session, not a reauthenticate */
+
+	/* if reconnect, we need to send previous sess id, otherwise it is 0 */
+	req->PreviousSessionId = previous_session;
+
 	req->Flags = 0; /* MBZ */
 	/* to enable echos and oplocks */
 	req->hdr.CreditRequest = cpu_to_le16(3);
@@ -716,13 +773,7 @@ ssetup_ntlmssp_authenticate:
 		iov[1].iov_len = blob_length;
 	} else if (phase == NtLmAuthenticate) {
 		req->hdr.SessionId = ses->Suid;
-		ntlmssp_blob = kzalloc(sizeof(struct _NEGOTIATE_MESSAGE) + 500,
-				       GFP_KERNEL);
-		if (ntlmssp_blob == NULL) {
-			rc = -ENOMEM;
-			goto ssetup_exit;
-		}
-		rc = build_ntlmssp_auth_blob(ntlmssp_blob, &blob_length, ses,
+		rc = build_ntlmssp_auth_blob(&ntlmssp_blob, &blob_length, ses,
 					     nls_cp);
 		if (rc) {
 			cifs_dbg(FYI, "build_ntlmssp_auth_blob failed %d\n",
@@ -811,6 +862,11 @@ ssetup_exit:
 		mutex_lock(&server->srv_mutex);
 		if (server->sign && server->ops->generate_signingkey) {
 			rc = server->ops->generate_signingkey(ses);
+#ifdef MY_ABC_HERE
+			if (-EOPNOTSUPP == rc) {
+				rc = 0;
+			} else {
+#endif /* MY_ABC_HERE */
 			kfree(ses->auth_key.response);
 			ses->auth_key.response = NULL;
 			if (rc) {
@@ -819,6 +875,9 @@ ssetup_exit:
 				mutex_unlock(&server->srv_mutex);
 				goto keygen_exit;
 			}
+#ifdef MY_ABC_HERE
+			}
+#endif /* MY_ABC_HERE */
 		}
 		if (!server->session_estab) {
 			server->sequence_number = 0x2;
@@ -1120,7 +1179,13 @@ parse_lease_state(struct TCP_Server_Info *server, struct smb2_create_rsp *rsp,
 		name = le16_to_cpu(cc->NameOffset) + (char *)cc;
 		if (le16_to_cpu(cc->NameLength) == 4 &&
 		    strncmp(name, "RqLs", 4) == 0)
+#ifdef MY_ABC_HERE
+		{
+			return server->ops->parse_lease_buf(server, cc, epoch);
+		}
+#else
 			return server->ops->parse_lease_buf(cc, epoch);
+#endif /* MY_ABC_HERE */
 
 		next = le32_to_cpu(cc->Next);
 		if (!next)
@@ -1139,7 +1204,11 @@ add_lease_context(struct TCP_Server_Info *server, struct kvec *iov,
 	struct smb2_create_req *req = iov[0].iov_base;
 	unsigned int num = *num_iovec;
 
+#ifdef MY_ABC_HERE
+	iov[num].iov_base = server->ops->create_lease_buf(server, oplock+1, *oplock);
+#else
 	iov[num].iov_base = server->ops->create_lease_buf(oplock+1, *oplock);
+#endif /* MY_ABC_HERE */
 	if (iov[num].iov_base == NULL)
 		return -ENOMEM;
 	iov[num].iov_len = server->vals->create_lease_size;
@@ -1173,7 +1242,7 @@ create_durable_v2_buf(struct cifs_fid *pfid)
 
 	buf->dcontext.Timeout = 0; /* Should this be configurable by workload */
 	buf->dcontext.Flags = cpu_to_le32(SMB2_DHANDLE_FLAG_PERSISTENT);
-	get_random_bytes(buf->dcontext.CreateGuid, 16);
+	generate_random_uuid(buf->dcontext.CreateGuid);
 	memcpy(pfid->create_guid, buf->dcontext.CreateGuid, 16);
 
 	/* SMB2_CREATE_DURABLE_HANDLE_REQUEST is "DH2Q" */
@@ -1809,6 +1878,54 @@ smb2_echo_callback(struct mid_q_entry *mid)
 	add_credits(server, credits_received, CIFS_ECHO_OP);
 }
 
+void smb2_reconnect_server(struct work_struct *work)
+{
+	struct TCP_Server_Info *server = container_of(work,
+					struct TCP_Server_Info, reconnect.work);
+	struct cifs_ses *ses;
+	struct cifs_tcon *tcon, *tcon2;
+	struct list_head tmp_list;
+	int tcon_exist = false;
+
+	/* Prevent simultaneous reconnects that can corrupt tcon->rlist list */
+	mutex_lock(&server->reconnect_mutex);
+
+	INIT_LIST_HEAD(&tmp_list);
+	cifs_dbg(FYI, "Need negotiate, reconnecting tcons\n");
+
+	spin_lock(&cifs_tcp_ses_lock);
+	list_for_each_entry(ses, &server->smb_ses_list, smb_ses_list) {
+		list_for_each_entry(tcon, &ses->tcon_list, tcon_list) {
+			if (tcon->need_reconnect) {
+				tcon->tc_count++;
+				list_add_tail(&tcon->rlist, &tmp_list);
+				tcon_exist = true;
+			}
+		}
+	}
+	/*
+	 * Get the reference to server struct to be sure that the last call of
+	 * cifs_put_tcon() in the loop below won't release the server pointer.
+	 */
+	if (tcon_exist)
+		server->srv_count++;
+
+	spin_unlock(&cifs_tcp_ses_lock);
+
+	list_for_each_entry_safe(tcon, tcon2, &tmp_list, rlist) {
+		smb2_reconnect(SMB2_ECHO, tcon);
+		list_del_init(&tcon->rlist);
+		cifs_put_tcon(tcon);
+	}
+
+	cifs_dbg(FYI, "Reconnecting tcons finished\n");
+	mutex_unlock(&server->reconnect_mutex);
+
+	/* now we can safely release srv struct */
+	if (tcon_exist)
+		cifs_put_tcp_session(server, 1);
+}
+
 int
 SMB2_echo(struct TCP_Server_Info *server)
 {
@@ -1819,6 +1936,19 @@ SMB2_echo(struct TCP_Server_Info *server)
 				 .rq_nvec = 1 };
 
 	cifs_dbg(FYI, "In echo request\n");
+
+#ifdef MY_ABC_HERE
+	if (server && CifsGood != server->tcpStatus) {
+		cifs_dbg(FYI, "tcpStatus not Good (%d); Don't send echo\n",
+				server->tcpStatus);
+		return rc;
+	}
+#endif /* MY_ABC_HERE */
+	if (server->tcpStatus == CifsNeedNegotiate) {
+		/* No need to send echo on newly established connections */
+		queue_delayed_work(cifsiod_wq, &server->reconnect, 0);
+		return rc;
+	}
 
 	rc = small_smb2_init(SMB2_ECHO, NULL, (void **)&req);
 	if (rc)
@@ -1845,7 +1975,12 @@ SMB2_flush(const unsigned int xid, struct cifs_tcon *tcon, u64 persistent_fid,
 {
 	struct smb2_flush_req *req;
 	struct TCP_Server_Info *server;
+#ifdef MY_ABC_HERE
+	// CID 413508: Dereference before NULL check
+	struct cifs_ses *ses = tcon ? tcon->ses : NULL;
+#else
 	struct cifs_ses *ses = tcon->ses;
+#endif /* MY_ABC_HERE */
 	struct kvec iov[1];
 	int resp_buftype;
 	int rc = 0;
@@ -2038,6 +2173,7 @@ smb2_async_readv(struct cifs_readdata *rdata)
 	if (rdata->credits) {
 		buf->CreditCharge = cpu_to_le16(DIV_ROUND_UP(rdata->bytes,
 						SMB2_MAX_BUFFER_SIZE));
+		buf->CreditRequest = buf->CreditCharge;
 		spin_lock(&server->req_lock);
 		server->credits += rdata->credits -
 						le16_to_cpu(buf->CreditCharge);
@@ -2224,6 +2360,7 @@ smb2_async_writev(struct cifs_writedata *wdata,
 	if (wdata->credits) {
 		req->hdr.CreditCharge = cpu_to_le16(DIV_ROUND_UP(wdata->bytes,
 						    SMB2_MAX_BUFFER_SIZE));
+		req->hdr.CreditRequest = req->hdr.CreditCharge;
 		spin_lock(&server->req_lock);
 		server->credits += wdata->credits -
 					le16_to_cpu(req->hdr.CreditCharge);

@@ -447,7 +447,6 @@ static void handleread(struct net_device *dev)
 	int base = dev->base_addr;
 	unsigned long flags;
 
-	
 	flags=claim_dma_lock();
 	disable_dma(dma);
 	clear_dma_ff(dma);

@@ -577,7 +577,6 @@ static u32 _aty_ld_pll(unsigned int pll_index,
 	return aty_ld_le32(CLOCK_CNTL_DATA);
 }
 
-    
 static void _aty_st_pll(unsigned int pll_index, u32 val,
 			const struct aty128fb_par *par)
 {

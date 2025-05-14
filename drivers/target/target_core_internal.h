@@ -22,7 +22,6 @@ struct target_fabric_configfs {
 	struct list_head	tf_list;
 	struct config_group	tf_group;
 	struct config_group	tf_disc_group;
-	struct config_group	*tf_default_groups[2];
 	const struct target_core_fabric_ops *tf_ops;
 
 	struct config_item_type tf_discovery_cit;
@@ -148,6 +147,7 @@ sense_reason_t	target_cmd_size_check(struct se_cmd *cmd, unsigned int size);
 void	target_qf_do_work(struct work_struct *work);
 bool	target_check_wce(struct se_device *dev);
 bool	target_check_fua(struct se_device *dev);
+void	__target_execute_cmd(struct se_cmd *, bool);
 
 /* target_core_stat.c */
 void	target_stat_setup_dev_default_groups(struct se_device *);

@@ -5896,7 +5896,6 @@ static void usc_set_async_mode( struct mgsl_struct *info )
 		RegValue |= BIT14;
 	usc_OutReg( info, CMR, RegValue );
 
-	
 	/* Receiver mode Register (RMR)
 	 *
 	 * <15..13>	000	encoding = None
@@ -5927,7 +5926,6 @@ static void usc_set_async_mode( struct mgsl_struct *info )
 
 	usc_RCmd( info, RCmd_SelectRicrIntLevel );
 
-	
 	/* Receive Interrupt Control Register (RICR)
 	 *
 	 * <15..8>	?		RxFIFO IRQ Request Level
@@ -5953,7 +5951,6 @@ static void usc_set_async_mode( struct mgsl_struct *info )
 	usc_UnlatchRxstatusBits( info, RXSTATUS_ALL );
 	usc_ClearIrqPendingBits( info, RECEIVE_STATUS );
 
-	
 	/* Transmit mode Register (TMR)
 	 *
 	 * <15..13>	000	encoding = None
@@ -5986,7 +5983,6 @@ static void usc_set_async_mode( struct mgsl_struct *info )
 
 	usc_TCmd( info, TCmd_SelectTicrIntLevel );
 
-	
 	/* Transmit Interrupt Control Register (TICR)
 	 *
 	 * <15..8>	?	Transmit FIFO IRQ Level
@@ -6009,7 +6005,6 @@ static void usc_set_async_mode( struct mgsl_struct *info )
 
 	usc_enable_async_clock( info, info->params.data_rate );
 
-	
 	/* Channel Control/status Register (CCSR)
 	 *
 	 * <15>		X	RCC FIFO Overflow status (RO)
@@ -6318,7 +6313,6 @@ static void usc_enable_async_clock( struct mgsl_struct *info, u32 data_rate )
 		else
 			usc_OutReg( info, TC0R, (u16)((921600/data_rate) - 1) );
 
-		
 		/*
 		 * Hardware Configuration Register (HCR)
 		 * Clear Bit 1, BRG0 mode = Continuous

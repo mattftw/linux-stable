@@ -2597,8 +2597,7 @@ lpfc_cleanup(struct lpfc_vport *vport)
 						"usgmap:x%x refcnt:%d\n",
 						ndlp->nlp_DID, (void *)ndlp,
 						ndlp->nlp_usg_map,
-						atomic_read(
-							&ndlp->kref.refcount));
+						kref_read(&ndlp->kref));
 			}
 			break;
 		}
@@ -8834,9 +8833,12 @@ found:
 				 * already mapped to this phys_id.
 				 */
 				if (cpup->irq != LPFC_VECTOR_MAP_EMPTY) {
-					chann[saved_chann] =
-						cpup->channel_id;
-					saved_chann++;
+					if (saved_chann <=
+					    LPFC_FCP_IO_CHAN_MAX) {
+						chann[saved_chann] =
+							cpup->channel_id;
+						saved_chann++;
+					}
 					goto out;
 				}
 
@@ -11384,6 +11386,7 @@ static struct pci_driver lpfc_driver = {
 	.id_table	= lpfc_id_table,
 	.probe		= lpfc_pci_probe_one,
 	.remove		= lpfc_pci_remove_one,
+	.shutdown	= lpfc_pci_remove_one,
 	.suspend        = lpfc_pci_suspend_one,
 	.resume		= lpfc_pci_resume_one,
 	.err_handler    = &lpfc_err_handler,

@@ -594,7 +594,6 @@ mts_scsi_queuecommand_lck(struct scsi_cmnd *srb, mts_scsi_cmnd_callback callback
 		goto out;
 	}
 
-	
 	usb_fill_bulk_urb(desc->urb,
 		      desc->usb_dev,
 		      usb_sndbulkpipe(desc->usb_dev,desc->ep_out),

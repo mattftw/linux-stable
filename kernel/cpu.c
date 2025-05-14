@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /* CPU control.
  * (C) 2001, 2002, 2003, 2004 Rusty Russell
  *
@@ -8,6 +11,7 @@
 #include <linux/init.h>
 #include <linux/notifier.h>
 #include <linux/sched.h>
+#include <linux/sched/smt.h>
 #include <linux/unistd.h>
 #include <linux/cpu.h>
 #include <linux/oom.h>
@@ -25,6 +29,13 @@
 #include <trace/events/power.h>
 
 #include "smpboot.h"
+
+#if defined(CONFIG_ARCH_RTD129X) && defined(MY_ABC_HERE) || \
+	defined(CONFIG_RTK_PLATFORM) && defined(CONFIG_SYNO_LSP_RTD1619)
+extern void rtk_cpu_power_down(int cpu);
+extern void rtk_cpu_power_up(int cpu);
+#endif /* CONFIG_ARCH_RTD129X && MY_ABC_HERE ||
+		  CONFIG_RTK_PLATFORM && CONFIG_SYNO_LSP_RTD1619 */
 
 #ifdef CONFIG_SMP
 /* Serializes the updates to cpu_online_mask, cpu_present_mask */
@@ -192,6 +203,12 @@ void cpu_hotplug_enable(void)
 EXPORT_SYMBOL_GPL(cpu_hotplug_enable);
 #endif	/* CONFIG_HOTPLUG_CPU */
 
+/*
+ * Architectures that need SMT-specific errata handling during SMT hotplug
+ * should override this.
+ */
+void __weak arch_smt_update(void) { }
+
 /* Need to know about CPUs going up/down? */
 int register_cpu_notifier(struct notifier_block *nb)
 {
@@ -223,12 +240,6 @@ static int cpu_notify(unsigned long val, void *v)
 	return __cpu_notify(val, v, -1, NULL);
 }
 
-#ifdef CONFIG_HOTPLUG_CPU
-
-static void cpu_notify_nofail(unsigned long val, void *v)
-{
-	BUG_ON(cpu_notify(val, v));
-}
 EXPORT_SYMBOL(register_cpu_notifier);
 EXPORT_SYMBOL(__register_cpu_notifier);
 
@@ -245,6 +256,12 @@ void __unregister_cpu_notifier(struct notifier_block *nb)
 	raw_notifier_chain_unregister(&cpu_chain, nb);
 }
 EXPORT_SYMBOL(__unregister_cpu_notifier);
+
+#ifdef CONFIG_HOTPLUG_CPU
+static void cpu_notify_nofail(unsigned long val, void *v)
+{
+	BUG_ON(cpu_notify(val, v));
+}
 
 /**
  * clear_tasks_mm_cpumask - Safely clear tasks' mm_cpumask for a CPU
@@ -427,6 +444,7 @@ out_release:
 	cpu_hotplug_done();
 	if (!err)
 		cpu_notify_nofail(CPU_POST_DEAD | mod, hcpu);
+	arch_smt_update();
 	return err;
 }
 
@@ -530,7 +548,7 @@ out_notify:
 		__cpu_notify(CPU_UP_CANCELED | mod, hcpu, nr_calls, NULL);
 out:
 	cpu_hotplug_done();
-
+	arch_smt_update();
 	return ret;
 }
 
@@ -587,6 +605,13 @@ int disable_nonboot_cpus(void)
 			continue;
 		trace_suspend_resume(TPS("CPU_OFF"), cpu, true);
 		error = _cpu_down(cpu, 1);
+
+#if defined(CONFIG_ARCH_RTD129X) && defined(MY_ABC_HERE) || \
+	defined(CONFIG_RTK_PLATFORM) && defined(CONFIG_SYNO_LSP_RTD1619)
+		rtk_cpu_power_down(cpu);
+#endif /* CONIFG_ARCH_RTD129X && MY_ABC_HERE ||
+		  CONFIG_RTK_PLATFORM && CONFIG_SYNO_LSP_RTD1619 */
+
 		trace_suspend_resume(TPS("CPU_OFF"), cpu, false);
 		if (!error)
 			cpumask_set_cpu(cpu, frozen_cpus);
@@ -636,6 +661,13 @@ void enable_nonboot_cpus(void)
 
 	for_each_cpu(cpu, frozen_cpus) {
 		trace_suspend_resume(TPS("CPU_ON"), cpu, true);
+
+#if defined(CONFIG_ARCH_RTD129X) && defined(MY_ABC_HERE) || \
+	defined(CONFIG_RTK_PLATFORM) && defined(CONFIG_SYNO_LSP_RTD1619)
+		rtk_cpu_power_up(cpu);
+#endif /* CONIFG_ARCH_RTD129X && MY_ABC_HERE ||
+		  CONFIG_RTK_PLATFORM && CONFIG_SYNO_LSP_RTD1619 */
+
 		error = _cpu_up(cpu, 1);
 		trace_suspend_resume(TPS("CPU_ON"), cpu, false);
 		if (!error) {
@@ -827,3 +859,23 @@ void init_cpu_online(const struct cpumask *src)
 {
 	cpumask_copy(to_cpumask(cpu_online_bits), src);
 }
+
+#ifdef MY_DEF_HERE
+enum cpu_mitigations cpu_mitigations = CPU_MITIGATIONS_OFF;
+#else /* MY_DEF_HERE */
+enum cpu_mitigations cpu_mitigations = CPU_MITIGATIONS_AUTO;
+#endif /* MY_DEF_HERE */
+
+static int __init mitigations_parse_cmdline(char *arg)
+{
+	if (!strcmp(arg, "off"))
+		cpu_mitigations = CPU_MITIGATIONS_OFF;
+	else if (!strcmp(arg, "auto"))
+		cpu_mitigations = CPU_MITIGATIONS_AUTO;
+	else
+		pr_crit("Unsupported mitigations=%s, system may still be vulnerable\n",
+			arg);
+
+	return 0;
+}
+early_param("mitigations", mitigations_parse_cmdline);

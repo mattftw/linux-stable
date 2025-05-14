@@ -366,7 +366,6 @@ static int card_present(int socketno)
 	if (sockets[socketno].io_base == 0)
 		return 0;
 
-		
 	val = indirect_read(socketno, 1); /* Interface status register */
 	if ((val&12)==12) {
 		leave("card_present 1");
@@ -387,11 +386,6 @@ static void set_bridge_state(int sock)
 	leave("set_bridge_state");
 }
 
-
-
-
-
-      
 static int i82092aa_init(struct pcmcia_socket *sock)
 {
 	int i;
@@ -504,7 +498,6 @@ static int i82092aa_set_socket(struct pcmcia_socket *socket, socket_state_t *sta
 			return -EINVAL;
 	}
 	
-	
 	switch (state->Vpp) {
 		case 0:	
 			printk("not setting Vpp on socket %i\n",sock);
@@ -616,7 +609,6 @@ static int i82092aa_set_mem_map(struct pcmcia_socket *socket, struct pccard_mem_
 		return -EINVAL;
 	}
 	
-	
 	if ( (mem->card_start > 0x3ffffff) || (region.start > region.end) ||
 	     (mem->speed > 1000) ) {
 		leave("i82092aa_set_mem_map: invalid address / speed");
@@ -632,7 +624,6 @@ static int i82092aa_set_mem_map(struct pcmcia_socket *socket, struct pccard_mem_
 	/* Turn off the window before changing anything */
 	if (indirect_read(sock, I365_ADDRWIN) & I365_ENA_MEM(map))
 	              indirect_resetbit(sock, I365_ADDRWIN, I365_ENA_MEM(map));
-	                 
 	                 
 /* 	printk("set_mem_map: Setting map %i range to %x - %x on socket %i, speed is %i, active = %i \n",map, region.start,region.end,sock,mem->speed,mem->flags & MAP_ACTIVE);  */
 

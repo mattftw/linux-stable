@@ -251,7 +251,6 @@ static int vx_adjust_audio_level(struct vx_core *chip, int audio, int capture,
 	return vx_send_msg(chip, &rmh);
 }
 
-    
 #if 0 // not used
 static int vx_read_audio_level(struct vx_core *chip, int audio, int capture,
 			       struct vx_audio_level *info)

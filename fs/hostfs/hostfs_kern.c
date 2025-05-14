@@ -378,9 +378,9 @@ static int hostfs_fsync(struct file *file, loff_t start, loff_t end,
 	if (ret)
 		return ret;
 
-	mutex_lock(&inode->i_mutex);
+	inode_lock(inode);
 	ret = fsync_file(HOSTFS_I(inode)->fd, datasync);
-	mutex_unlock(&inode->i_mutex);
+	inode_unlock(inode);
 
 	return ret;
 }
@@ -959,10 +959,11 @@ static int hostfs_fill_sb_common(struct super_block *sb, void *d, int silent)
 
 	if (S_ISLNK(root_inode->i_mode)) {
 		char *name = follow_link(host_root_path);
-		if (IS_ERR(name))
+		if (IS_ERR(name)) {
 			err = PTR_ERR(name);
-		else
-			err = read_name(root_inode, name);
+			goto out_put;
+		}
+		err = read_name(root_inode, name);
 		kfree(name);
 		if (err)
 			goto out_put;

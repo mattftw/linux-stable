@@ -346,10 +346,7 @@ renum_wait3:
 	movx @dptr, a
 	;; we are back online. the host device will now re-query us
 	
-	
 main:	sjmp main
-
-	
 
 ISR_Sudav:
 	push dps
@@ -620,7 +617,6 @@ setup_breq_not_0a:
 setup_breq_not_0b:
 	ljmp setup_stall
 
-		
 setup_done_ack:	
 	;; now clear HSNAK
 	mov dptr, EP0CS
@@ -1016,7 +1012,6 @@ putchar_wait:
 	clr TI
 	ret
 
-	
 baud_table:			; baud_high, then baud_low
 	;; baud[0]: 110
 	.byte BAUD_HIGH(110)
@@ -1118,7 +1113,6 @@ tx_ring:
 	.skip 0x100		; 256 bytes
 rx_ring:
 	.skip 0x100		; 256 bytes
-	
 	
 	.END
 	

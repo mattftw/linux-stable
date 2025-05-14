@@ -1686,7 +1686,6 @@ snd_wavefront_synth_ioctl (struct snd_hwdep *hw, struct file *file,
 	return 0;
 }
 
-
 /***********************************************************************/
 /*  WaveFront: interface for card-level wavefront module               */
 /***********************************************************************/

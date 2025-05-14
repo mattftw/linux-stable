@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  *  Overview:
  *   This is the generic MTD driver for NAND flash devices. It should be
@@ -1684,8 +1687,12 @@ static int nand_do_read_ops(struct mtd_info *mtd, loff_t from,
 	int ret = 0;
 	uint32_t readlen = ops->len;
 	uint32_t oobreadlen = ops->ooblen;
+#if defined(CONFIG_SYNO_LSP_RTD1619)
+	uint32_t max_oobsize = mtd_oobavail(mtd, ops);
+#else /* CONFIG_SYNO_LSP_RTD1619 */
 	uint32_t max_oobsize = ops->mode == MTD_OPS_AUTO_OOB ?
 		mtd->oobavail : mtd->oobsize;
+#endif /* CONFIG_SYNO_LSP_RTD1619 */
 
 	uint8_t *bufpoi, *oob, *buf;
 	int use_bufpoi;
@@ -2036,10 +2043,14 @@ static int nand_do_read_oob(struct mtd_info *mtd, loff_t from,
 
 	stats = mtd->ecc_stats;
 
+#if defined(CONFIG_SYNO_LSP_RTD1619)
+	len = mtd_oobavail(mtd, ops);
+#else /* CONFIG_SYNO_LSP_RTD1619 */
 	if (ops->mode == MTD_OPS_AUTO_OOB)
 		len = chip->ecc.layout->oobavail;
 	else
 		len = mtd->oobsize;
+#endif /* CONFIG_SYNO_LSP_RTD1619 */
 
 	if (unlikely(ops->ooboffs >= len)) {
 		pr_debug("%s: attempt to start read outside oob\n",
@@ -2536,8 +2547,12 @@ static int nand_do_write_ops(struct mtd_info *mtd, loff_t to,
 	uint32_t writelen = ops->len;
 
 	uint32_t oobwritelen = ops->ooblen;
+#if defined(CONFIG_SYNO_LSP_RTD1619)
+	uint32_t oobmaxlen = mtd_oobavail(mtd, ops);
+#else /* CONFIG_SYNO_LSP_RTD1619 */
 	uint32_t oobmaxlen = ops->mode == MTD_OPS_AUTO_OOB ?
 				mtd->oobavail : mtd->oobsize;
+#endif /* CONFIG_SYNO_LSP_RTD1619 */
 
 	uint8_t *oob = ops->oobbuf;
 	uint8_t *buf = ops->datbuf;
@@ -2586,7 +2601,7 @@ static int nand_do_write_ops(struct mtd_info *mtd, loff_t to,
 		int cached = writelen > bytes && page != blockmask;
 		uint8_t *wbuf = buf;
 		int use_bufpoi;
-		int part_pagewr = (column || writelen < (mtd->writesize - 1));
+		int part_pagewr = (column || writelen < mtd->writesize);
 
 		if (part_pagewr)
 			use_bufpoi = 1;
@@ -2727,10 +2742,14 @@ static int nand_do_write_oob(struct mtd_info *mtd, loff_t to,
 	pr_debug("%s: to = 0x%08x, len = %i\n",
 			 __func__, (unsigned int)to, (int)ops->ooblen);
 
+#if defined(CONFIG_SYNO_LSP_RTD1619)
+	len = mtd_oobavail(mtd, ops);
+#else /* CONFIG_SYNO_LSP_RTD1619 */
 	if (ops->mode == MTD_OPS_AUTO_OOB)
 		len = chip->ecc.layout->oobavail;
 	else
 		len = mtd->oobsize;
+#endif /* CONFIG_SYNO_LSP_RTD1619 */
 
 	/* Do not allow write past end of page */
 	if ((ops->ooboffs + ops->ooblen) > len) {
@@ -3989,6 +4008,11 @@ int nand_scan_ident(struct mtd_info *mtd, int maxchips,
 	int ret;
 
 	if (chip->flash_node) {
+#if defined(MY_DEF_HERE)
+		/* MTD can automatically handle DT partitions, etc. */
+		mtd_set_of_node(mtd, chip->flash_node);
+#endif /* MY_DEF_HERE */
+
 		ret = nand_dt_init(mtd, chip, chip->flash_node);
 		if (ret)
 			return ret;

@@ -102,7 +102,6 @@
        	"pcm -c 2" doesn't work. "pcm -c 2 -m direct_interleaved" does.
 	KDE3: "Enable full duplex operation" deadlocks.
 
-	
 2002-08-31 Karsten Wiese
 	Version 0.0.3: audio also simplex;
 	simplifying: iso urbs only 1 packet, melted structs.
@@ -224,7 +223,6 @@ static void i_usX2Y_In04Int(struct urb *urb)
 			wake_up(&usX2Y->us428ctls_wait_queue_head);
 		}
 	}
-	
 	
 	if (usX2Y->US04) {
 		if (0 == usX2Y->US04->submitted)

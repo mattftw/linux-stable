@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * Copyright (C) 2011 Sascha Hauer, Pengutronix <s.hauer@pengutronix.de>
  * Copyright (C) 2011 Richard Zhao, Linaro <richard.zhao@linaro.org>
@@ -28,7 +31,11 @@
  * parent - fixed parent.  No clk_set_parent support
  */
 
+#if defined(MY_DEF_HERE)
+//do nothing
+#else /* MY_DEF_HERE */
 #define to_clk_divider(_hw) container_of(_hw, struct clk_divider, hw)
+#endif /* MY_DEF_HERE */
 
 #define div_mask(width)	((1 << (width)) - 1)
 
@@ -354,7 +361,7 @@ static long clk_divider_round_rate(struct clk_hw *hw, unsigned long rate,
 
 	/* if read only, just return current value */
 	if (divider->flags & CLK_DIVIDER_READ_ONLY) {
-		bestdiv = readl(divider->reg) >> divider->shift;
+		bestdiv = clk_readl(divider->reg) >> divider->shift;
 		bestdiv &= div_mask(divider->width);
 		bestdiv = _get_div(divider->table, bestdiv, divider->flags,
 			divider->width);

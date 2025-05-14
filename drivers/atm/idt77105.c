@@ -298,7 +298,6 @@ static int idt77105_start(struct atm_dev *dev)
 	    PUT(PRIV(dev)->old_mcr, MCR);
         }
 
-                    
 	idt77105_stats_timer_func(0); /* clear 77105 counters */
 	(void) fetch_stats(dev,NULL,1); /* clear kernel counters */
         

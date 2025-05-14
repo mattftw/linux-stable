@@ -1008,7 +1008,6 @@ static void xdump( u_char*  cp, int  length, char*  prefix )
 }  /* close xdump(... */
 #endif /* CONFIG_ATM_IA_DEBUG */
 
-  
 static struct atm_dev *ia_boards = NULL;  
   
 #define ACTUAL_RAM_BASE \
@@ -1017,7 +1016,6 @@ static struct atm_dev *ia_boards = NULL;
 	IPHASE5575_FRAG_CONTROL_RAM_BASE*((iadev->mem)/(128 * 1024))  
 #define ACTUAL_REASS_RAM_BASE \
 	IPHASE5575_REASS_CONTROL_RAM_BASE*((iadev->mem)/(128 * 1024))  
-  
   
 /*-- some utilities and memory allocation stuff will come here -------------*/  
   
@@ -1045,7 +1043,6 @@ static void desc_dbg(IADEV *iadev) {
   for(i=0; i <iadev->num_tx_desc; i++)
       printk("Desc_tbl[%d] = %d \n", i, iadev->desc_tbl[i].timestamp);
 } 
-  
   
 /*----------------------------- Receiving side stuff --------------------------*/  
  
@@ -1088,7 +1085,6 @@ static void free_desc(struct atm_dev *dev, int desc)
 		iadev->rfL.fdq_wr =  iadev->rfL.fdq_st;  
 	writew(iadev->rfL.fdq_wr, iadev->reass_reg+FREEQ_WR_PTR);  
 }  
-  
   
 static int rx_pkt(struct atm_dev *dev)  
 {  
@@ -1141,7 +1137,6 @@ static int rx_pkt(struct atm_dev *dev)
 		return -1;  
 	}  
 	  
-  
 	/* might want to check the status bits for errors */  
 	status = (u_short) (buf_desc_ptr->desc_mode);  
 	if (status & (RX_CER | RX_PTE | RX_OFL))  
@@ -1266,7 +1261,6 @@ printk("Test logic RUN!!!!\n");
   }  
 }  
   
-  
 static void rx_dle_intr(struct atm_dev *dev)  
 {  
   IADEV *iadev;  
@@ -1368,7 +1362,6 @@ INCR_DLE:
      }
   }
 }  
-  
   
 static int open_rx(struct atm_vcc *vcc)  
 {  
@@ -1894,7 +1887,6 @@ static int open_tx(struct atm_vcc *vcc)
 	return 0;  
 }  
   
-  
 static int tx_init(struct atm_dev *dev)  
 {  
 	IADEV *iadev;  
@@ -2258,8 +2250,6 @@ static irqreturn_t ia_int(int irq, void *dev_id)
    return IRQ_RETVAL(handled);
 }  
 	  
-	  
-	  
 /*----------------------------- entries --------------------------------*/  
 static int get_esi(struct atm_dev *dev)  
 {  
@@ -2300,7 +2290,6 @@ static int reset_sar(struct atm_dev *dev)
 	udelay(5);  
 	return 0;  
 }  
-	  
 	  
 static int ia_init(struct atm_dev *dev)
 {  

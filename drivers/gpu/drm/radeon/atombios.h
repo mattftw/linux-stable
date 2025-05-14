@@ -181,7 +181,7 @@
 #define HW_ASSISTED_I2C_STATUS_FAILURE          2
 #define HW_ASSISTED_I2C_STATUS_SUCCESS          1
 
-#pragma pack(1)                                       /* BIOS data must use byte aligment */
+#pragma pack(1)                                       /* BIOS data must use byte alignment */
 
 /*  Define offset to location of ROM header. */
 
@@ -3883,7 +3883,7 @@ typedef struct _ATOM_GPIO_PIN_ASSIGNMENT
 }ATOM_GPIO_PIN_ASSIGNMENT;
 
 //ucGPIO_ID pre-define id for multiple usage
-//from SMU7.x, if ucGPIO_ID=PP_AC_DC_SWITCH_GPIO_PINID in GPIO_LUTTable, AC/DC swithing feature is enable
+//from SMU7.x, if ucGPIO_ID=PP_AC_DC_SWITCH_GPIO_PINID in GPIO_LUTTable, AC/DC switching feature is enable
 #define PP_AC_DC_SWITCH_GPIO_PINID          60
 //from SMU7.x, if ucGPIO_ID=VDDC_REGULATOR_VRHOT_GPIO_PINID in GPIO_LUTable, VRHot feature is enable
 #define VDDC_VRHOT_GPIO_PINID               61
@@ -5934,7 +5934,6 @@ typedef struct _ATOM_ASIC_INTERNAL_SS_INFO_V3
 #define ATOM_S9_I2C_CHANNEL_ABORTED_SHIFT   16
 #endif
 
- 
 #define ATOM_FLAG_SET                         0x20
 #define ATOM_FLAG_CLEAR                       0
 #define CLEAR_ATOM_S6_ACC_MODE                ((ATOM_ACC_CHANGE_INFO_DEF << 8 )|ATOM_S6_ACC_MODE_SHIFT | ATOM_FLAG_CLEAR)
@@ -7589,7 +7588,6 @@ typedef struct _DVO_ENCODER_CONTROL_PS_ALLOCATION
 #define ATOM_XTMDS_SUPPORTED_DUALLINK   0x00000002
 #define ATOM_XTMDS_MVPU_FPGA            0x00000004
 
-                           
 typedef struct _ATOM_XTMDS_INFO
 {
   ATOM_COMMON_TABLE_HEADER   sHeader;  
@@ -7909,7 +7907,7 @@ typedef struct  _ATOM_POWERPLAY_INFO_V3
 
 /*********************************************************************************/
 
-#pragma pack() // BIOS data must use byte aligment
+#pragma pack() // BIOS data must use byte alignment
 
 //
 // AMD ACPI Table

@@ -625,7 +625,6 @@ cia_restore_srm_settings(void)
 #define cia_restore_srm_settings()	do {} while (0)
 #endif /* ALPHA_RESTORE_SRM_SETUP */
 
-
 static void __init
 do_init_arch(int is_pyxis)
 {

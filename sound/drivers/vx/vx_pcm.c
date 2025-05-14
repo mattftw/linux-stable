@@ -377,7 +377,6 @@ static int vx_toggle_pipe(struct vx_core *chip, struct vx_pipe *pipe, int state)
 	return err < 0 ? -EIO : 0;
 }
 
-    
 /*
  * vx_stop_pipe - stop a pipe
  * @pipe: the pipe to be stopped

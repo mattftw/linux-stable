@@ -132,7 +132,6 @@ static const struct driver_info	an2720_info = {
 
 #endif	/* CONFIG_USB_AN2720 */
 
-
 #ifdef	CONFIG_USB_BELKIN
 #define	HAVE_HARDWARE
 
@@ -151,8 +150,6 @@ static const struct driver_info	belkin_info = {
 
 #endif	/* CONFIG_USB_BELKIN */
 
-
-
 #ifdef	CONFIG_USB_EPSON2888
 #define	HAVE_HARDWARE
 
@@ -179,7 +176,6 @@ static const struct driver_info	epson2888_info = {
 
 #endif	/* CONFIG_USB_EPSON2888 */
 
-
 /*-------------------------------------------------------------------------
  *
  * info from Jonathan McDowell <noodles@earth.li>
@@ -193,7 +189,6 @@ static const struct driver_info kc2190_info = {
 };
 #endif /* CONFIG_USB_KC2190 */
 
-
 #ifdef	CONFIG_USB_ARMLINUX
 #define	HAVE_HARDWARE
 
@@ -234,7 +229,6 @@ static const struct driver_info	blob_info = {
 
 #endif	/* CONFIG_USB_ARMLINUX */
 
-
 /*-------------------------------------------------------------------------*/
 
 #ifndef	HAVE_HARDWARE

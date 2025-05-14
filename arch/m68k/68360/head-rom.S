@@ -99,10 +99,8 @@
 #define MCU_SIM_PICR                0x0000
 #define MCU_SIM_PITR                0x0000
 
-
 #include <asm/m68360_regs.h>
 
-	
 /*
  * By the time this RAM specific code begins to execute, DPRAM
  * and DRAM should already be mapped and accessible.

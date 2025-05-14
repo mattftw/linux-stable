@@ -2166,7 +2166,6 @@ static int nsc_ircc_net_open(struct net_device *dev)
 	char hwname[32];
 	__u8 bank;
 	
-	
 	IRDA_ASSERT(dev != NULL, return -1;);
 	self = netdev_priv(dev);
 	
@@ -2227,7 +2226,6 @@ static int nsc_ircc_net_close(struct net_device *dev)
 	int iobase;
 	__u8 bank;
 
-	
 	IRDA_ASSERT(dev != NULL, return -1;);
 
 	self = netdev_priv(dev);

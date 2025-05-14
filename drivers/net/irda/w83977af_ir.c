@@ -650,7 +650,6 @@ static void w83977af_dma_xmit_complete(struct w83977af_ir *self)
 	} else
 		self->netdev->stats.tx_packets++;
 
-	
 	if (self->new_speed) {
 		w83977af_change_speed(self, self->new_speed);
 		self->new_speed = 0;
@@ -1111,7 +1110,6 @@ static int w83977af_net_open(struct net_device *dev)
 	int iobase;
 	char hwname[32];
 	__u8 set;
-	
 	
 	IRDA_ASSERT(dev != NULL, return -1;);
 	self = netdev_priv(dev);

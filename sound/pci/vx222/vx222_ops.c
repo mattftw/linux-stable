@@ -410,7 +410,6 @@ static int vx2_load_xilinx_binary(struct vx_core *chip, const struct firmware *x
 	return 0;
 }
 
-	
 /*
  * load the boot/dsp images
  */

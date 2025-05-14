@@ -1,29 +1,7 @@
-/*
- *  Copyright 2008 ioogle, Inc.  All rights reserved.
- *	Released under GPL v2.
- *
- * Libata transport class.
- *
- * The ATA transport class contains common code to deal with ATA HBAs,
- * an approximated representation of ATA topologies in the driver model,
- * and various sysfs attributes to expose these topologies and management
- * interfaces to user-space.
- *
- * There are 3 objects defined in in this class:
- * - ata_port
- * - ata_link
- * - ata_device
- * Each port has a link object. Each link can have up to two devices for PATA
- * and generally one for SATA.
- * If there is SATA port multiplier [PMP], 15 additional ata_link object are
- * created.
- *
- * These objects are created when the ata host is initialized and when a PMP is
- * found. They are removed only when the HBA is removed, cleaned before the
- * error handler runs.
- */
-
-
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
+ 
 #include <linux/kernel.h>
 #include <linux/blkdev.h>
 #include <linux/spinlock.h>
@@ -37,7 +15,11 @@
 #include "libata.h"
 #include "libata-transport.h"
 
+#ifdef MY_ABC_HERE
+#define ATA_PORT_ATTRS		4
+#else  
 #define ATA_PORT_ATTRS		3
+#endif  
 #define ATA_LINK_ATTRS		3
 #define ATA_DEV_ATTRS		9
 
@@ -54,10 +36,6 @@ struct ata_internal {
 	struct transport_container link_attr_cont;
 	struct transport_container dev_attr_cont;
 
-	/*
-	 * The array of null terminated pointers to attributes
-	 * needed by scsi_sysfs.c
-	 */
 	struct device_attribute *link_attrs[ATA_LINK_ATTRS + 1];
 	struct device_attribute *port_attrs[ATA_PORT_ATTRS + 1];
 	struct device_attribute *dev_attrs[ATA_DEV_ATTRS + 1];
@@ -80,15 +58,9 @@ struct ata_internal {
 #define transport_class_to_port(dev)				\
 	tdev_to_port((dev)->parent)
 
-
-/* Device objects are always created whit link objects */
 static int ata_tdev_add(struct ata_device *dev);
 static void ata_tdev_delete(struct ata_device *dev);
 
-
-/*
- * Hack to allow attributes of the same name in different objects.
- */
 #define ATA_DEVICE_ATTR(_prefix,_name,_mode,_show,_store) \
 	struct device_attribute device_attr_##_prefix##_##_name = \
 	__ATTR(_name,_mode,_show,_store)
@@ -198,9 +170,6 @@ static struct {
 };
 ata_bitfield_name_match(xfer,ata_xfer_names)
 
-/*
- * ATA Port attributes
- */
 #define ata_port_show_simple(field, name, format_string, cast)		\
 static ssize_t								\
 show_ata_port_##name(struct device *dev,				\
@@ -218,6 +187,9 @@ static DEVICE_ATTR(name, S_IRUGO, show_ata_port_##name, NULL)
 ata_port_simple_attr(nr_pmp_links, nr_pmp_links, "%d\n", int);
 ata_port_simple_attr(stats.idle_irq, idle_irq, "%ld\n", unsigned long);
 ata_port_simple_attr(local_port_no, port_no, "%u\n", unsigned int);
+#ifdef MY_ABC_HERE
+ata_port_simple_attr(error_handling, error_handling, "%u\n", unsigned int);
+#endif  
 
 static DECLARE_TRANSPORT_CLASS(ata_port_class,
 			       "ata_port", NULL, NULL, NULL);
@@ -227,13 +199,6 @@ static void ata_tport_release(struct device *dev)
 	put_device(dev->parent);
 }
 
-/**
- * ata_is_port --  check if a struct device represents a ATA port
- * @dev:	device to check
- *
- * Returns:
- *	%1 if the device represents a ATA Port, %0 else
- */
 static int ata_is_port(const struct device *dev)
 {
 	return dev->release == ata_tport_release;
@@ -247,12 +212,6 @@ static int ata_tport_match(struct attribute_container *cont,
 	return &ata_scsi_transport_template->host_attrs.ac == cont;
 }
 
-/**
- * ata_tport_delete  --  remove ATA PORT
- * @port:	ATA PORT to remove
- *
- * Removes the specified ATA PORT.  Remove the associated link as well.
- */
 void ata_tport_delete(struct ata_port *ap)
 {
 	struct device *dev = &ap->tdev;
@@ -265,16 +224,6 @@ void ata_tport_delete(struct ata_port *ap)
 	put_device(dev);
 }
 
-/** ata_tport_add - initialize a transport ATA port structure
- *
- * @parent:	parent device
- * @ap:		existing ata_port structure
- *
- * Initialize a ATA port structure for sysfs.  It will be added to the device
- * tree below the device specified by @parent which could be a PCI device.
- *
- * Returns %0 on success
- */
 int ata_tport_add(struct device *parent,
 		  struct ata_port *ap)
 {
@@ -318,10 +267,6 @@ int ata_tport_add(struct device *parent,
 	return error;
 }
 
-
-/*
- * ATA link attributes
- */
 static int noop(int x) { return x; }
 
 #define ata_link_show_linkspeed(field, format)			        \
@@ -351,13 +296,6 @@ static void ata_tlink_release(struct device *dev)
 	put_device(dev->parent);
 }
 
-/**
- * ata_is_link --  check if a struct device represents a ATA link
- * @dev:	device to check
- *
- * Returns:
- *	%1 if the device represents a ATA link, %0 else
- */
 static int ata_is_link(const struct device *dev)
 {
 	return dev->release == ata_tlink_release;
@@ -372,12 +310,6 @@ static int ata_tlink_match(struct attribute_container *cont,
 	return &i->link_attr_cont.ac == cont;
 }
 
-/**
- * ata_tlink_delete  --  remove ATA LINK
- * @port:	ATA LINK to remove
- *
- * Removes the specified ATA LINK.  remove associated ATA device(s) as well.
- */
 void ata_tlink_delete(struct ata_link *link)
 {
 	struct device *dev = &link->tdev;
@@ -393,15 +325,6 @@ void ata_tlink_delete(struct ata_link *link)
 	put_device(dev);
 }
 
-/**
- * ata_tlink_add  --  initialize a transport ATA link structure
- * @link:	allocated ata_link structure.
- *
- * Initialize an ATA LINK structure for sysfs.  It will be added in the
- * device tree below the ATA PORT it belongs to.
- *
- * Returns %0 on success
- */
 int ata_tlink_add(struct ata_link *link)
 {
 	struct device *dev = &link->tdev;
@@ -445,10 +368,6 @@ int ata_tlink_add(struct ata_link *link)
 	put_device(dev);
 	return error;
 }
-
-/*
- * ATA device attributes
- */
 
 #define ata_dev_show_class(title, field)				\
 static ssize_t								\
@@ -591,13 +510,6 @@ static void ata_tdev_release(struct device *dev)
 	put_device(dev->parent);
 }
 
-/**
- * ata_is_ata_dev  --  check if a struct device represents a ATA device
- * @dev:	device to check
- *
- * Returns:
- *	%1 if the device represents a ATA device, %0 else
- */
 static int ata_is_ata_dev(const struct device *dev)
 {
 	return dev->release == ata_tdev_release;
@@ -612,28 +524,12 @@ static int ata_tdev_match(struct attribute_container *cont,
 	return &i->dev_attr_cont.ac == cont;
 }
 
-/**
- * ata_tdev_free  --  free a ATA LINK
- * @dev:	ATA PHY to free
- *
- * Frees the specified ATA PHY.
- *
- * Note:
- *   This function must only be called on a PHY that has not
- *   successfully been added using ata_tdev_add().
- */
 static void ata_tdev_free(struct ata_device *dev)
 {
 	transport_destroy_device(&dev->tdev);
 	put_device(&dev->tdev);
 }
 
-/**
- * ata_tdev_delete  --  remove ATA device
- * @port:	ATA PORT to remove
- *
- * Removes the specified ATA device.
- */
 static void ata_tdev_delete(struct ata_device *ata_dev)
 {
 	struct device *dev = &ata_dev->tdev;
@@ -643,16 +539,6 @@ static void ata_tdev_delete(struct ata_device *ata_dev)
 	ata_tdev_free(ata_dev);
 }
 
-
-/**
- * ata_tdev_add  --  initialize a transport ATA device structure.
- * @ata_dev:	ata_dev structure.
- *
- * Initialize an ATA device structure for sysfs.  It will be added in the
- * device tree below the ATA LINK device it belongs to.
- *
- * Returns %0 on success
- */
 static int ata_tdev_add(struct ata_device *ata_dev)
 {
 	struct device *dev = &ata_dev->tdev;
@@ -681,11 +567,6 @@ static int ata_tdev_add(struct ata_device *ata_dev)
 	return 0;
 }
 
-
-/*
- * Setup / Teardown code
- */
-
 #define SETUP_TEMPLATE(attrb, field, perm, test)			\
 	i->private_##attrb[count] = dev_attr_##field;		       	\
 	i->private_##attrb[count].attr.mode = perm;			\
@@ -702,9 +583,6 @@ static int ata_tdev_add(struct ata_device *ata_dev)
 #define SETUP_DEV_ATTRIBUTE(field)					\
 	SETUP_TEMPLATE(dev_attrs, field, S_IRUGO, 1)
 
-/**
- * ata_attach_transport  --  instantiate ATA transport template
- */
 struct scsi_transport_template *ata_attach_transport(void)
 {
 	struct ata_internal *i;
@@ -737,6 +615,9 @@ struct scsi_transport_template *ata_attach_transport(void)
 	SETUP_PORT_ATTRIBUTE(nr_pmp_links);
 	SETUP_PORT_ATTRIBUTE(idle_irq);
 	SETUP_PORT_ATTRIBUTE(port_no);
+#ifdef MY_ABC_HERE
+	SETUP_PORT_ATTRIBUTE(error_handling);
+#endif  
 	BUG_ON(count > ATA_PORT_ATTRS);
 	i->port_attrs[count] = NULL;
 
@@ -763,10 +644,6 @@ struct scsi_transport_template *ata_attach_transport(void)
 	return &i->t;
 }
 
-/**
- * ata_release_transport  --  release ATA transport template instance
- * @t:		transport template instance
- */
 void ata_release_transport(struct scsi_transport_template *t)
 {
 	struct ata_internal *i = to_ata_internal(t);

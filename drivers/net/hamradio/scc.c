@@ -55,7 +55,6 @@
    
    ******************************************************************** 
 
-		
    Incomplete history of z8530drv:
    -------------------------------
 
@@ -832,7 +831,6 @@ static void init_channel(struct scc_channel *scc)
    		(RxClk * 1)		(RxClk * 32)
 */  
 
-   		
 	switch(scc->modem.clocksrc)
 	{
 		case CLK_DPLL:
@@ -1364,8 +1362,6 @@ static unsigned int scc_set_param(struct scc_channel *scc, unsigned int cmd, uns
 	return 0;
 }
 
-
- 
 static unsigned long scc_get_param(struct scc_channel *scc, unsigned int cmd)
 {
 	switch (cmd)
@@ -1489,7 +1485,6 @@ static void z8530_init(void)
 		if(scc->brand & (PC100 | PRIMUS))	/* this is a PC100/PRIMUS card */
 			Outb(scc->special,scc->option);	/* set the MODEM mode (0x22) */
 
-			
 		/* Reset and pre-init Z8530 */
 
 		spin_lock_irqsave(&scc->lock, flags);
@@ -1502,7 +1497,6 @@ static void z8530_init(void)
 		spin_unlock_irqrestore(&scc->lock, flags);		
         }
 
- 
 	Driver_Initialized = 1;
 }
 
@@ -1712,7 +1706,6 @@ static int scc_net_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 	int chan;
 	unsigned char device_name[IFNAMSIZ];
 	void __user *arg = ifr->ifr_data;
-	
 	
 	if (!Driver_Initialized)
 	{
@@ -2100,7 +2093,6 @@ static const struct file_operations scc_net_seq_fops = {
 
 #endif /* CONFIG_PROC_FS */
 
- 
 /* ******************************************************************** */
 /* * 			Init SCC driver 			      * */
 /* ******************************************************************** */
@@ -2172,7 +2164,6 @@ static void __exit scc_cleanup_driver(void)
 		}
 	}
 	
-		
 	if (Vector_Latch)
 		release_region(Vector_Latch, 1);
 

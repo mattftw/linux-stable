@@ -548,7 +548,6 @@ static void check_change( unsigned long dummy )
 	start_check_change_timer();
 }
 
- 
 /* Handling of the Head Settling Flag: This flag should be set after each
  * seek operation, because we don't use seeks with verify.
  */
@@ -573,9 +572,6 @@ static inline void copy_buffer(void *from, void *to)
 	for (cnt = 512/4; cnt; cnt--)
 		*p2++ = *p1++;
 }
-
-  
-  
 
 /* General Interrupt Handling */
 
@@ -807,7 +803,6 @@ static void fd_calibrate_done( int status )
 	}
 }
   
-  
 /* Seek the drive to the requested track. The drive must have been
  * calibrated at some point before this.
  */
@@ -965,7 +960,6 @@ static void fd_rwsec( void )
 	start_timeout();
 }
 
-    
 static void fd_readtrack_check( unsigned long dummy )
 {
 	unsigned long flags, addr, addr2;

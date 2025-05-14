@@ -835,7 +835,6 @@ void radeon_check_modes(struct radeonfb_info *rinfo, const char *mode_option)
 		rinfo->mon1_dbsize = info->monspecs.modedb_len;
 	}
 
-	
 	/*
 	 * Finally, if we don't have panel infos we need to figure some (or
 	 * we try to read it from card), we try to pick a default mode

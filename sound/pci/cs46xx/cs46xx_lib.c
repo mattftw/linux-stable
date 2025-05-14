@@ -3611,7 +3611,6 @@ static void clkrun_hack(struct snd_cs46xx *chip, int change)
 		outw(nval, chip->acpi_port + 0x10);
 }
 
-	
 /*
  * detect intel piix4
  */

@@ -82,7 +82,6 @@
 #error unknown bitfield endianess
 #endif
 
- 
 /* ATM cell header (minus HEC byte) */
 
 typedef struct atm_header {

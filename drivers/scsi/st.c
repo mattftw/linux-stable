@@ -225,8 +225,6 @@ static DEFINE_SPINLOCK(st_index_lock);
 static DEFINE_SPINLOCK(st_use_lock);
 static DEFINE_IDR(st_index_idr);
 
-
-
 #include "osst_detect.h"
 #ifndef SIGS_FROM_OSST
 #define SIGS_FROM_OSST \
@@ -3765,8 +3763,6 @@ static long st_compat_ioctl(struct file *file, unsigned int cmd, unsigned long a
 	return ret;
 }
 #endif
-
-
 
 /* Try to allocate a new tape buffer. Calling function must not hold
    dev_arr_lock. */

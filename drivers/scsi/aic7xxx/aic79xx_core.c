@@ -9863,7 +9863,6 @@ ahd_dump_card_state(struct ahd_softc *ahd)
 	}
 	printk("\n");
 
-	
 	printk("Sequencer DMA-Up and Complete list: ");
 	scb_index = ahd_inw(ahd, COMPLETE_DMA_SCB_HEAD);
 	i = 0;

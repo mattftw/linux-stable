@@ -84,7 +84,6 @@ struct keyspan_usa90_portControlMessage
 		setDtr, 		// host requests DTR output be set
 		dtr;			// 1=on, 0=off
 
-	
 	/*
 		2.	configuration data which is simply used as is 
 			and must be specified correctly in every host message.

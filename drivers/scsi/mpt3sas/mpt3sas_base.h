@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * This is the Fusion MPT base driver providing common API layer interface
  * for access to MPT (Message Passing Technology) firmware.
@@ -472,6 +475,9 @@ struct _sas_device {
 	u8	enclosure_level;
 	u8	connector_name[4];
 	struct kref refcount;
+#ifdef MY_DEF_HERE
+	u8   any_led_on;
+#endif /* MY_DEF_HERE */
 };
 
 static inline void sas_device_get(struct _sas_device *s)
@@ -643,6 +649,7 @@ struct chain_tracker {
  * @cb_idx: callback index
  * @direct_io: To indicate whether I/O is direct (WARPDRIVE)
  * @tracker_list: list of free request (ioc->free_list)
+ * @msix_io: IO's msix
  */
 struct scsiio_tracker {
 	u16	smid;
@@ -651,6 +658,7 @@ struct scsiio_tracker {
 	u8	direct_io;
 	struct list_head chain_list;
 	struct list_head tracker_list;
+	u16     msix_io;
 };
 
 /**
@@ -1165,6 +1173,9 @@ struct MPT3SAS_ADAPTER {
 	struct SL_WH_EVENT_TRIGGERS_T diag_trigger_event;
 	struct SL_WH_SCSI_TRIGGERS_T diag_trigger_scsi;
 	struct SL_WH_MPI_TRIGGERS_T diag_trigger_mpi;
+#ifdef MY_DEF_HERE
+	u8		syno_ids;
+#endif /* MY_DEF_HERE */
 };
 
 typedef u8 (*MPT_CALLBACK)(struct MPT3SAS_ADAPTER *ioc, u16 smid, u8 msix_index,
@@ -1213,7 +1224,8 @@ void mpt3sas_base_put_smid_scsi_io(struct MPT3SAS_ADAPTER *ioc, u16 smid,
 	u16 handle);
 void mpt3sas_base_put_smid_fast_path(struct MPT3SAS_ADAPTER *ioc, u16 smid,
 	u16 handle);
-void mpt3sas_base_put_smid_hi_priority(struct MPT3SAS_ADAPTER *ioc, u16 smid);
+void mpt3sas_base_put_smid_hi_priority(struct MPT3SAS_ADAPTER *ioc,
+	u16 smid, u16 msix_task);
 void mpt3sas_base_put_smid_default(struct MPT3SAS_ADAPTER *ioc, u16 smid);
 void mpt3sas_base_initialize_callback_handler(void);
 u8 mpt3sas_base_register_callback_handler(MPT_CALLBACK cb_func);

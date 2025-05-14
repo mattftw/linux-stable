@@ -437,7 +437,6 @@ struct pci_ops wildfire_pci_ops =
 	.write =	wildfire_write_config,
 };
 
-
 /*
  * NUMA Support
  */

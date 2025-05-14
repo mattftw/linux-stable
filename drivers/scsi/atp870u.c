@@ -627,8 +627,6 @@ static int atp870u_queuecommand_lck(struct scsi_cmnd *req_p,
 	host = req_p->device->host;
 	dev = (struct atp_unit *)&host->hostdata;
 		
-
-		
 	m = 1;
 	m = m << scmd_id(req_p);
 
@@ -3133,7 +3131,6 @@ static void atp870u_remove (struct pci_dev *pdev)
 {	
 	struct atp_unit *devext = pci_get_drvdata(pdev);
 	struct Scsi_Host *pshost = devext->host;
-	
 	
 	scsi_remove_host(pshost);
 	printk(KERN_INFO "free_irq : %d\n",pshost->irq);

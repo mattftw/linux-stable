@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * Based on arch/arm/mm/fault.c
  *
@@ -29,7 +32,9 @@
 #include <linux/sched.h>
 #include <linux/highmem.h>
 #include <linux/perf_event.h>
+#include <linux/preempt.h>
 
+#include <asm/bug.h>
 #include <asm/cpufeature.h>
 #include <asm/exception.h>
 #include <asm/debug-monitors.h>
@@ -40,6 +45,9 @@
 #include <asm/tlbflush.h>
 
 static const char *fault_name(unsigned int esr);
+#ifdef MY_ABC_HERE
+extern int gSynoDebugFlag;
+#endif /* MY_ABC_HERE */
 
 /*
  * Dump out the page tables associated with 'addr' in mm 'mm'.
@@ -167,6 +175,9 @@ static void __do_user_fault(struct task_struct *tsk, unsigned long addr,
 {
 	struct siginfo si;
 
+#ifdef MY_ABC_HERE
+	if (gSynoDebugFlag) {
+#endif /* MY_ABC_HERE */
 	if (unhandled_signal(tsk, sig) && show_unhandled_signals_ratelimited()) {
 		pr_info("%s[%d]: unhandled %s (%d) at 0x%08lx, esr 0x%03x\n",
 			tsk->comm, task_pid_nr(tsk), fault_name(esr), sig,
@@ -174,6 +185,9 @@ static void __do_user_fault(struct task_struct *tsk, unsigned long addr,
 		show_pte(tsk->mm, addr);
 		show_regs(regs);
 	}
+#ifdef MY_ABC_HERE
+	}
+#endif /* MY_ABC_HERE */
 
 	tsk->thread.fault_address = addr;
 	tsk->thread.fault_code = esr;
@@ -606,8 +620,16 @@ asmlinkage int __exception do_debug_exception(unsigned long addr,
 }
 
 #ifdef CONFIG_ARM64_PAN
-void cpu_enable_pan(void *__unused)
+int cpu_enable_pan(void *__unused)
 {
+	/*
+	 * We modify PSTATE. This won't work from irq context as the PSTATE
+	 * is discarded once we return from the exception.
+	 */
+	WARN_ON_ONCE(in_interrupt());
+
 	config_sctlr_el1(SCTLR_EL1_SPAN, 0);
+	asm(SET_PSTATE_PAN(1));
+	return 0;
 }
 #endif /* CONFIG_ARM64_PAN */

@@ -1345,7 +1345,6 @@ static inline void irda_usb_init_qos(struct irda_usb_cb *self)
 {
 	struct irda_class_desc *desc;
 
-	
 	desc = self->irda_desc;
 	
 	/* Initialize QoS for this device */

@@ -788,7 +788,6 @@ static int snd_emu1010_internal_clock_put(struct snd_kcontrol *kcontrol,
 			/*   Unmute all */
 			snd_emu1010_fpga_write(emu, EMU_HANA_UNMUTE, EMU_UNMUTE );
 			 
-			
 			break;		
 		}
 	}
@@ -1128,7 +1127,6 @@ static int snd_audigy_spdif_output_rate_put(struct snd_kcontrol *kcontrol,
 		break;
 	}
 
-	
 	spin_lock_irqsave(&emu->reg_lock, flags);
 	reg = snd_emu10k1_ptr_read(emu, A_SPDIF_SAMPLERATE, 0);
 	tmp = reg & ~A_SPDIF_RATE_MASK;
